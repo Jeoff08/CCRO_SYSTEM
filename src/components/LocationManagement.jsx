@@ -49,6 +49,29 @@ function makeId() {
   }
 }
 
+const ACCENT_STYLES = {
+  emerald: {
+    highlightBg: "bg-emerald-600",
+    highlightBorder: "border-emerald-700",
+    highlightRing: "ring-emerald-400",
+  },
+  blue: {
+    highlightBg: "bg-sky-600",
+    highlightBorder: "border-sky-700",
+    highlightRing: "ring-sky-400",
+  },
+  rose: {
+    highlightBg: "bg-rose-600",
+    highlightBorder: "border-rose-700",
+    highlightRing: "ring-rose-400",
+  },
+  violet: {
+    highlightBg: "bg-violet-600",
+    highlightBorder: "border-violet-700",
+    highlightRing: "ring-violet-400",
+  },
+};
+
 export function LocationResultLayout({
   result,
   matchingBox,
@@ -56,6 +79,7 @@ export function LocationResultLayout({
   rowLabels,
   title = "Location result",
   isPreview = false,
+  accent = "emerald",
 }) {
   const matchCellRef = useRef(null);
 
@@ -79,6 +103,7 @@ export function LocationResultLayout({
   const rowLabel = hasResult ? (rowLabels[resultRow] || `R-${resultRow}`) : null;
   const headingSuffix = matchingBox ? " (from registered box)" : " (computed)";
   const noteSuffix = matchingBox ? " Values from registered box." : "";
+  const accentStyles = ACCENT_STYLES[accent] || ACCENT_STYLES.emerald;
 
   const bays = useMemo(() => {
     const keys = Object.keys(shelfLettersByBay || {})
@@ -252,7 +277,7 @@ export function LocationResultLayout({
                                   ref={isMatch ? matchCellRef : null}
                                   className={`px-3 py-2 border-2 min-w-[3rem] ${
                                     isMatch
-                                      ? "bg-emerald-600 text-white font-semibold border-emerald-700 ring-2 ring-emerald-400 ring-offset-1"
+                                      ? `${accentStyles.highlightBg} text-white font-semibold ${accentStyles.highlightBorder} ring-2 ${accentStyles.highlightRing} ring-offset-1`
                                       : "border-emerald-200 bg-white text-gray-400"
                                   }`}
                                   title={isMatch ? `Document located here: ${cellLocation} — Box #${resultBox}` : cellLocation}

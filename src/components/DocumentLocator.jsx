@@ -330,6 +330,15 @@ export default function DocumentLocator({
           matchingBox={matchingBox}
           shelfLettersByBay={shelfLettersByBay}
           rowLabels={rowLabels}
+          accent={
+            certificateType === "COLB"
+              ? "blue"
+              : certificateType === "COM"
+              ? "rose"
+              : certificateType === "COD"
+              ? "violet"
+              : "emerald"
+          }
         />
       )}
     </div>

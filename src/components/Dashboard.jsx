@@ -148,8 +148,8 @@ export default function Dashboard({ user, onLogout, activityLog, addLog }) {
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      <header className="border-b border-emerald-200 bg-white/80 backdrop-blur">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-sky-50 to-emerald-100">
+      <header className="border-b border-emerald-200 bg-gradient-to-r from-emerald-100 via-sky-100 to-emerald-50/90 backdrop-blur-sm shadow-sm">
         <div className="flex items-center w-full">
           <div
             className={`shrink-0 border-r border-emerald-200 flex items-center transition-all duration-200 ${
@@ -190,7 +190,7 @@ export default function Dashboard({ user, onLogout, activityLog, addLog }) {
 
       <div className="flex min-h-[calc(100vh-57px)]">
         <aside
-          className={`shrink-0 border-r border-emerald-200 bg-white/80 backdrop-blur flex flex-col py-4 transition-all duration-200 ${
+          className={`shrink-0 border-r border-emerald-200 bg-gradient-to-b from-emerald-50 via-sky-50 to-emerald-100 flex flex-col py-4 transition-all duration-200 ${
             sidebarOpen ? "w-56" : "w-16"
           }`}
         >
@@ -198,7 +198,7 @@ export default function Dashboard({ user, onLogout, activityLog, addLog }) {
             <button
               type="button"
               onClick={() => setSidebarOpen((o) => !o)}
-              className="p-2 rounded-lg text-gray-500 hover:bg-emerald-50 hover:text-emerald-700 transition"
+              className="p-2 rounded-lg text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 transition"
               aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
               title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
             >
@@ -248,7 +248,7 @@ export default function Dashboard({ user, onLogout, activityLog, addLog }) {
           </div>
         </aside>
 
-        <main className="flex-1 overflow-auto px-4 py-6 min-w-0">
+        <main className="flex-1 overflow-auto px-4 py-6 min-w-0 bg-gradient-to-br from-emerald-50/70 via-sky-50/80 to-emerald-100/80">
           <section
             className="w-full mx-auto bg-white rounded-3xl border border-emerald-100 shadow-sm p-5 md:p-6"
             style={{ maxWidth: "min(80rem, calc(100vw - 18rem))" }}
