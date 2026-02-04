@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import CertificateBadge from "./CertificateBadge.jsx";
 
 const CERT_TYPES = [
@@ -22,6 +22,26 @@ const MONTHS = [
   "November",
   "December",
 ];
+
+const SHELF_LETTERS_BY_BAY = {
+  1: ["S-A", "S-B"],
+  2: ["S-A", "S-C", "S-B", "S-D"],
+  3: ["S-A", "S-C", "S-B", "S-D"],
+  4: ["S-A", "S-C", "S-B", "S-D"],
+  5: ["S-A", "S-C", "S-B", "S-D"],
+  6: ["S-A", "S-B"],
+};
+
+function getShelfLetter(bay, shelfNumber) {
+  return SHELF_LETTERS_BY_BAY[bay]?.[shelfNumber - 1] || `S-${shelfNumber}`;
+}
+
+function getShelfNumberFromLetter(bay, letter) {
+  const mapping = SHELF_LETTERS_BY_BAY[bay];
+  if (!mapping) return null;
+  const index = mapping.findIndex((l) => l === letter);
+  return index >= 0 ? index + 1 : null;
+}
 
 export default function BoxManagement({ boxes, onAdd, onUpdate, addLog }) {
   const [editingBox, setEditingBox] = useState(null);
@@ -52,7 +72,7 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog }) {
     if (addLog) {
       addLog(
         "box-add",
-        `Box ${payload.boxNumber} created (Bay ${payload.bay}, Shelf ${payload.shelf}, Row ${payload.row}).`
+        `Box ${payload.boxNumber} created (Bay ${payload.bay}, Shelf ${getShelfLetter(payload.bay, payload.shelf)}, Row ${payload.row}).`
       );
     }
     setModalStep("success");
@@ -213,7 +233,7 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog }) {
                       >
                         <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{box.boxNumber}</td>
                         <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{box.bay}</td>
-                        <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{box.shelf}</td>
+                        <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{getShelfLetter(box.bay, box.shelf)}</td>
                         <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{box.row}</td>
                         <td className="px-3 py-2 text-gray-900 whitespace-nowrap">
                           {box.monthIndexTo != null && box.monthIndexTo !== box.monthIndex
@@ -263,7 +283,7 @@ function ConfirmBoxStep({ payload, onBack, onConfirm }) {
     { label: "Month", value: monthLabel },
     { label: "Box #", value: payload.boxNumber },
     { label: "Bay", value: payload.bay },
-    { label: "Shelf", value: payload.shelf },
+    { label: "Shelf", value: getShelfLetter(payload.bay, payload.shelf) },
     { label: "Row / Level", value: payload.row },
     { label: "Registry range", value: payload.registryRange || "—" },
     { label: "Remark", value: payload.remark || "—" },
@@ -347,11 +367,31 @@ export function BoxForm({ editingBox, prefillPayload, onSaved, onCancel, existin
   const [monthIndexTo, setMonthIndexTo] = useState(source.monthIndexTo ?? null);
   const [boxNumber, setBoxNumber] = useState(source.boxNumber !== undefined && source.boxNumber !== null ? String(source.boxNumber) : "");
   const [bay, setBay] = useState(source.bay !== undefined && source.bay !== null ? String(source.bay) : "");
-  const [shelf, setShelf] = useState(source.shelf !== undefined && source.shelf !== null ? String(source.shelf) : "");
+  const initialShelfLetter =
+    source.shelf !== undefined && source.shelf !== null && source.bay !== undefined && source.bay !== null
+      ? getShelfLetter(source.bay, source.shelf)
+      : "";
+  const [shelfLetter, setShelfLetter] = useState(initialShelfLetter);
   const [row, setRow] = useState(source.row !== undefined && source.row !== null ? String(source.row) : "");
   const [registryRange, setRegistryRange] = useState(source.registryRange || "");
   const [remark, setRemark] = useState(source.remark || "");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!bay) {
+      setShelfLetter("");
+      return;
+    }
+    const bayNum = Number(bay);
+    const allowedShelves = SHELF_LETTERS_BY_BAY[bayNum];
+    if (!allowedShelves || (shelfLetter && !allowedShelves.includes(shelfLetter))) {
+      setShelfLetter("");
+    }
+  }, [bay, shelfLetter]);
+
+  const bayNumForShelves = Number(bay);
+  const availableShelves =
+    Number.isNaN(bayNumForShelves) || !bay ? [] : SHELF_LETTERS_BY_BAY[bayNumForShelves] || [];
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -363,7 +403,7 @@ export function BoxForm({ editingBox, prefillPayload, onSaved, onCancel, existin
       monthIndex == null ||
       !boxNumber ||
       !bay ||
-      !shelf ||
+      !shelfLetter ||
       !row
     ) {
       setError("All fields except Year To, Month To, registry range, and remark are required.");
@@ -386,19 +426,18 @@ export function BoxForm({ editingBox, prefillPayload, onSaved, onCancel, existin
     }
 
     const bayNum = Number(bay);
-    const shelfNum = Number(shelf);
     const rowNum = Number(row);
+    const shelfNum = getShelfNumberFromLetter(bayNum, shelfLetter);
 
     if (
       bayNum < 1 ||
       bayNum > 6 ||
-      shelfNum < 1 ||
-      shelfNum > 6 ||
+      shelfNum == null ||
       rowNum < 1 ||
       rowNum > 6
     ) {
       setError(
-        "Bay must be 1–6, Shelf 1–6, and Row/Level 1–6 to match physical layout."
+        "Bay must be 1–6, shelf must match the bay's letters, and Row/Level 1–6 to match physical layout."
       );
       return;
     }
@@ -562,15 +601,20 @@ export function BoxForm({ editingBox, prefillPayload, onSaved, onCancel, existin
           />
         </Field>
 
-        <Field label="Shelf (1–6)">
-          <input
-            type="number"
-            min={1}
-            max={6}
-            value={shelf}
-            onChange={(e) => setShelf(e.target.value)}
-            className="w-full rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-          />
+        <Field label="Shelf (letters)">
+          <select
+            value={shelfLetter}
+            onChange={(e) => setShelfLetter(e.target.value)}
+            disabled={!bay}
+            className="w-full rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:text-gray-400 disabled:bg-gray-50"
+          >
+            <option value="">{bay ? "Select shelf letter" : "Select bay first"}</option>
+            {availableShelves.map((letter) => (
+              <option key={letter} value={letter}>
+                {letter}
+              </option>
+            ))}
+          </select>
         </Field>
 
         <Field label="Row / Level (1–6)">
