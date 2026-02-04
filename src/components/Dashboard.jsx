@@ -159,7 +159,7 @@ export default function Dashboard({ user, onLogout, activityLog, addLog }) {
             <img
               src="/461661670_1118300596319054_8742723372426556351_n.jpg"
               alt="CCRO"
-              className={`rounded-xl object-cover shrink-0 border-2 border-black transition-all ${
+              className={`rounded-full object-cover shrink-0 border-2 border-emerald-600 transition-all ${
                 sidebarOpen ? "h-12 w-12" : "h-10 w-10"
               }`}
             />
