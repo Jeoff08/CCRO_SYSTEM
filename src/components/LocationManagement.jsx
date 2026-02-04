@@ -314,7 +314,15 @@ export default function LocationManagement({
   const [addBayModalOpen, setAddBayModalOpen] = useState(false);
   const [addShelfModalOpen, setAddShelfModalOpen] = useState(false);
   const [addRowsModalOpen, setAddRowsModalOpen] = useState(false);
+  const [updateConfirmOpen, setUpdateConfirmOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteMode, setDeleteMode] = useState("bay"); // bay | shelf | row
   const [addBayNumber, setAddBayNumber] = useState("");
+  const [deleteBayNumber, setDeleteBayNumber] = useState("");
+  const [deleteShelfBay, setDeleteShelfBay] = useState("");
+  const [deleteShelfLabel, setDeleteShelfLabel] = useState("");
+  const [deleteRowKey, setDeleteRowKey] = useState("");
   const [addShelfBay, setAddShelfBay] = useState("");
   const [addShelfLetters, setAddShelfLetters] = useState("");
   const [addRowsBay, setAddRowsBay] = useState("");
@@ -466,8 +474,107 @@ export default function LocationManagement({
     setAddBayModalOpen(false);
     setAddShelfModalOpen(false);
     setAddRowsModalOpen(false);
+    setUpdateConfirmOpen(false);
+    setDeleteModalOpen(false);
+    setDeleteConfirmOpen(false);
     setFormError("");
   };
+
+  const handleDeleteBay = () => {
+    const num = deleteBayNumber.trim() ? parseInt(deleteBayNumber.trim(), 10) : null;
+    if (num == null || Number.isNaN(num) || num < 1) {
+      setFormError("Select a valid bay to delete.");
+      return false;
+    }
+    if (!draftShelvesByBay[num]) {
+      setFormError(`Bay ${num} does not exist.`);
+      return false;
+    }
+    setDraftShelvesByBay((prev) => {
+      const next = { ...prev };
+      delete next[num];
+      return next;
+    });
+
+    // Reset dependent modal selections if they point to deleted bay
+    if (addShelfBay && parseInt(addShelfBay, 10) === num) setAddShelfBay("");
+    if (addRowsBay && parseInt(addRowsBay, 10) === num) {
+      setAddRowsBay("");
+      setAddRowsShelf("");
+    }
+
+    setDeleteBayNumber("");
+    setFormError("");
+    return true;
+  };
+
+  const handleDeleteShelf = () => {
+    const bay = deleteShelfBay === "" ? null : parseInt(deleteShelfBay, 10);
+    if (bay == null || Number.isNaN(bay) || !draftShelvesByBay[bay]) {
+      setFormError("Select a valid bay.");
+      return false;
+    }
+    const shelves = draftShelvesByBay[bay] || [];
+    if (!deleteShelfLabel || !shelves.includes(deleteShelfLabel)) {
+      setFormError("Select a shelf to delete.");
+      return false;
+    }
+    setDraftShelvesByBay((prev) => ({
+      ...prev,
+      [bay]: (prev[bay] || []).filter((s) => s !== deleteShelfLabel),
+    }));
+    setDeleteShelfLabel("");
+    setFormError("");
+    return true;
+  };
+
+  const handleDeleteRow = () => {
+    const key = deleteRowKey === "" ? null : parseInt(deleteRowKey, 10);
+    if (key == null || Number.isNaN(key) || !draftRowLabels[key]) {
+      setFormError("Select a row label to delete.");
+      return false;
+    }
+    const keys = Object.keys(draftRowLabels).map(Number).filter((k) => !Number.isNaN(k));
+    if (keys.length <= 1) {
+      setFormError("You must keep at least one row label.");
+      return false;
+    }
+    setDraftRowLabels((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    setDeleteRowKey("");
+    setFormError("");
+    return true;
+  };
+
+  const handleDeleteSubmit = () => {
+    if (deleteMode === "bay") return handleDeleteBay();
+    if (deleteMode === "shelf") return handleDeleteShelf();
+    if (deleteMode === "row") return handleDeleteRow();
+    setFormError("Select what to delete.");
+    return false;
+  };
+
+  const deleteSummary = useMemo(() => {
+    if (deleteMode === "bay") {
+      const bay = deleteBayNumber?.trim();
+      return bay ? `Bay B-${bay}` : "selected bay";
+    }
+    if (deleteMode === "shelf") {
+      const bay = deleteShelfBay?.trim();
+      const shelf = deleteShelfLabel?.trim();
+      if (bay && shelf) return `Shelf ${shelf} (Bay B-${bay})`;
+      return "selected shelf";
+    }
+    if (deleteMode === "row") {
+      const key = deleteRowKey === "" ? null : parseInt(deleteRowKey, 10);
+      const label = key != null && !Number.isNaN(key) ? draftRowLabels?.[key] : "";
+      return label ? `Row label ${label}` : "selected row label";
+    }
+    return "selected item";
+  }, [deleteMode, deleteBayNumber, deleteShelfBay, deleteShelfLabel, deleteRowKey, draftRowLabels]);
 
   return (
     <div className="space-y-6">
@@ -485,42 +592,374 @@ export default function LocationManagement({
           <div className="border border-emerald-100 rounded-2xl bg-emerald-50/60 p-4 md:p-5">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
               <h3 className="text-sm font-semibold text-gray-900">Location Management</h3>
-              <div className="flex flex-wrap gap-2 justify-end">
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={!selectedProfile}
-                  className="inline-flex items-center justify-center rounded-full border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
-                >
-                  Update
-                </button>
-      
-              </div>
             </div>
 
             {selectedProfile && (
-              <div className="mb-4 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => { setFormError(""); setAddBayNumber(""); setAddBayModalOpen(true); }}
-                  className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setFormError(""); setAddBayNumber(""); setAddBayModalOpen(true); }}
+                    className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                  >
+                    Add bay
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setFormError(""); setAddShelfBay(bayNumbers.length ? String(bayNumbers[0]) : ""); setAddShelfLetters(""); setAddShelfModalOpen(true); }}
+                    className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                  >
+                    Add shelf
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { const b = bayNumbers[0]; setFormError(""); setAddRowsBay(bayNumbers.length ? String(b) : ""); setAddRowsShelf((draftShelvesByBay[b] || [])[0] ?? ""); setAddRowsInput(""); setAddRowsModalOpen(true); }}
+                    className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                  >
+                    Add rows
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const firstBay = bayNumbers[0];
+                      const shelves = firstBay != null ? (draftShelvesByBay[firstBay] || []) : [];
+                      const rowKeys = Object.keys(draftRowLabels).map(Number).filter((k) => !Number.isNaN(k)).sort((a, b) => a - b);
+                      setFormError("");
+                      setDeleteMode("bay");
+                      setDeleteBayNumber(bayNumbers.length ? String(firstBay) : "");
+                      setDeleteShelfBay(bayNumbers.length ? String(firstBay) : "");
+                      setDeleteShelfLabel(shelves[0] ?? "");
+                      setDeleteRowKey(rowKeys[0] != null ? String(rowKeys[0]) : "");
+                      setDeleteModalOpen(true);
+                    }}
+                    className="inline-flex items-center justify-center rounded-full border border-red-200 bg-white px-4 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                    disabled={bayNumbers.length === 0 && Object.keys(draftRowLabels || {}).length === 0}
+                    title="Delete bay, shelf, or rows"
+                  >
+                    Delete
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormError("");
+                      setUpdateConfirmOpen(true);
+                    }}
+                    disabled={!selectedProfile}
+                    className="inline-flex items-center justify-center rounded-full border border-emerald-300 bg-white px-4 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 disabled:opacity-50"
+                  >
+                    Update
+                  </button>
+                </div> 
+              </div>
+            )}
+
+            {updateConfirmOpen && selectedProfile && (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+                onClick={() => setUpdateConfirmOpen(false)}
+                aria-modal="true"
+                role="dialog"
+                aria-labelledby="update-confirm-title"
+              >
+                <div
+                  className="bg-white rounded-2xl shadow-xl border border-emerald-100 p-5 w-full max-w-md"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  Add bay
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setFormError(""); setAddShelfBay(bayNumbers.length ? String(bayNumbers[0]) : ""); setAddShelfLetters(""); setAddShelfModalOpen(true); }}
-                  className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 id="update-confirm-title" className="text-sm font-semibold text-gray-900">
+                      Confirm update
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setUpdateConfirmOpen(false)}
+                      className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                      aria-label="Close"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <p className="text-sm text-gray-700">
+                    Save changes to <span className="font-semibold">{selectedProfile.name || "this profile"}</span>?
+                  </p>
+
+                  <div className="mt-4 flex gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setUpdateConfirmOpen(false)}
+                      className="inline-flex items-center justify-center rounded-full border border-emerald-200 bg-white px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-emerald-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleSave();
+                        setUpdateConfirmOpen(false);
+                      }}
+                      className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                    >
+                      Confirm
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {deleteModalOpen && selectedProfile && (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+                onClick={closeModal}
+                aria-modal="true"
+                role="dialog"
+                aria-labelledby="delete-modal-title"
+              >
+                <div
+                  className="bg-white rounded-2xl shadow-xl border border-emerald-100 p-5 w-full max-w-md"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  Add shelf
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { const b = bayNumbers[0]; setFormError(""); setAddRowsBay(bayNumbers.length ? String(b) : ""); setAddRowsShelf((draftShelvesByBay[b] || [])[0] ?? ""); setAddRowsInput(""); setAddRowsModalOpen(true); }}
-                  className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 id="delete-modal-title" className="text-sm font-semibold text-gray-900">
+                      Delete
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={closeModal}
+                      className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                      aria-label="Close"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-semibold tracking-[0.18em] uppercase text-gray-700">
+                        What do you want to delete?
+                      </label>
+                      <select
+                        value={deleteMode}
+                        onChange={(e) => {
+                          const mode = e.target.value;
+                          setFormError("");
+                          setDeleteMode(mode);
+                          if (mode === "bay") {
+                            setDeleteBayNumber(bayNumbers.length ? String(bayNumbers[0]) : "");
+                          } else if (mode === "shelf") {
+                            const b = bayNumbers[0];
+                            const shelves = b != null ? (draftShelvesByBay[b] || []) : [];
+                            setDeleteShelfBay(bayNumbers.length ? String(b) : "");
+                            setDeleteShelfLabel(shelves[0] ?? "");
+                          } else if (mode === "row") {
+                            const rowKeys = Object.keys(draftRowLabels).map(Number).filter((k) => !Number.isNaN(k)).sort((a, b) => a - b);
+                            setDeleteRowKey(rowKeys[0] != null ? String(rowKeys[0]) : "");
+                          }
+                        }}
+                        className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      >
+                        <option value="bay">Bay</option>
+                        <option value="shelf">Shelf</option>
+                        <option value="row">Row label</option>
+                      </select>
+                    </div>
+
+                    {deleteMode === "bay" && (
+                      <>
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-semibold tracking-[0.18em] uppercase text-gray-700">Select bay</label>
+                          <select
+                            value={deleteBayNumber}
+                            onChange={(e) => setDeleteBayNumber(e.target.value)}
+                            className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                          >
+                            <option value="">Select bay</option>
+                            {bayNumbers.map((b) => (
+                              <option key={b} value={b}>
+                                B-{b}
+                              </option>
+                            ))}
+                          </select>
+                          <p className="text-[11px] text-gray-500">
+                            This removes the bay from the current draft. Click <span className="font-semibold">Update</span> to save.
+                          </p>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-semibold tracking-[0.18em] uppercase text-gray-700">Or type bay number</label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={deleteBayNumber}
+                            onChange={(e) => setDeleteBayNumber(e.target.value.replace(/\D/g, ""))}
+                            placeholder="e.g. 7"
+                            className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {deleteMode === "shelf" && (
+                      <>
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-semibold tracking-[0.18em] uppercase text-gray-700">Select bay</label>
+                          <select
+                            value={deleteShelfBay}
+                            onChange={(e) => {
+                              const nextBay = e.target.value;
+                              setDeleteShelfBay(nextBay);
+                              const b = nextBay === "" ? null : parseInt(nextBay, 10);
+                              const shelves = b != null && !Number.isNaN(b) ? (draftShelvesByBay[b] || []) : [];
+                              setDeleteShelfLabel(shelves[0] ?? "");
+                            }}
+                            className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                          >
+                            <option value="">Select bay</option>
+                            {bayNumbers.map((b) => (
+                              <option key={b} value={b}>B-{b}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-semibold tracking-[0.18em] uppercase text-gray-700">Select shelf</label>
+                          <select
+                            value={deleteShelfLabel}
+                            onChange={(e) => setDeleteShelfLabel(e.target.value)}
+                            className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                          >
+                            <option value="">Select shelf</option>
+                            {(draftShelvesByBay[parseInt(deleteShelfBay, 10)] || []).map((s) => (
+                              <option key={s} value={s}>{s}</option>
+                            ))}
+                          </select>
+                          <p className="text-[11px] text-gray-500">
+                            Click <span className="font-semibold">Update</span> to save changes.
+                          </p>
+                        </div>
+                      </>
+                    )}
+
+                    {deleteMode === "row" && (
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-semibold tracking-[0.18em] uppercase text-gray-700">Select row label</label>
+                        <select
+                          value={deleteRowKey}
+                          onChange={(e) => setDeleteRowKey(e.target.value)}
+                          className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        >
+                          <option value="">Select row</option>
+                          {Object.keys(draftRowLabels || {})
+                            .map(Number)
+                            .filter((k) => !Number.isNaN(k))
+                            .sort((a, b) => a - b)
+                            .map((k) => (
+                              <option key={k} value={k}>{draftRowLabels[k]}</option>
+                            ))}
+                        </select>
+                        <p className="text-[11px] text-gray-500">
+                          This removes the row label from the current draft. Click <span className="font-semibold">Update</span> to save.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {formError && (
+                    <p className="mt-3 text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+                      {formError}
+                    </p>
+                  )}
+
+                  <div className="mt-4 flex gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={closeModal}
+                      className="inline-flex items-center justify-center rounded-full border border-emerald-200 bg-white px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-emerald-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormError("");
+                        setDeleteConfirmOpen(true);
+                      }}
+                      className="inline-flex items-center justify-center rounded-full bg-red-600 px-4 py-2 text-xs font-semibold text-white hover:bg-red-700"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {deleteConfirmOpen && selectedProfile && (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+                onClick={() => setDeleteConfirmOpen(false)}
+                aria-modal="true"
+                role="dialog"
+                aria-labelledby="delete-confirm-title"
+              >
+                <div
+                  className="bg-white rounded-2xl shadow-xl border border-emerald-100 p-5 w-full max-w-md"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  Add rows
-                </button>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 id="delete-confirm-title" className="text-sm font-semibold text-gray-900">
+                      Confirm delete
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteConfirmOpen(false)}
+                      className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                      aria-label="Close"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <p className="text-sm text-gray-700">
+                    Are you sure you want to delete <span className="font-semibold">{deleteSummary}</span>?
+                  </p>
+                  <p className="mt-2 text-[11px] text-gray-500">
+                    This updates the draft only. Use <span className="font-semibold">Update</span> to save changes.
+                  </p>
+
+                  {formError && (
+                    <p className="mt-3 text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+                      {formError}
+                    </p>
+                  )}
+
+                  <div className="mt-4 flex gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setDeleteConfirmOpen(false)}
+                      className="inline-flex items-center justify-center rounded-full border border-emerald-200 bg-white px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-emerald-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const ok = handleDeleteSubmit();
+                        if (ok) {
+                          setDeleteConfirmOpen(false);
+                          setDeleteModalOpen(false);
+                        }
+                      }}
+                      className="inline-flex items-center justify-center rounded-full bg-red-600 px-4 py-2 text-xs font-semibold text-white hover:bg-red-700"
+                    >
+                      Confirm delete
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
