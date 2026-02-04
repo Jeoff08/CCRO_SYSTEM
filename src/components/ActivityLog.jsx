@@ -2,16 +2,18 @@ import React from "react";
 
 export default function ActivityLog({ activityLog, onLogout }) {
   return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900">Activity Log</h2>
-        <p className="text-sm text-gray-600">
-          Searches, logins, and box changes are captured here for accountability
-          and audits.
-        </p>
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Activity Log</h2>
+          <p className="text-sm text-gray-600">
+            Searches, logins, and box changes are captured here for accountability
+            and audits.
+          </p>
+        </div>
       </div>
 
-      <div className="border border-emerald-100 rounded-2xl bg-emerald-50/60 p-4 max-h-[32rem] overflow-y-auto custom-scrollbar">
+      <div className="border border-emerald-100 rounded-2xl bg-emerald-50/60 p-4 md:p-5 max-h-[28rem] overflow-y-auto custom-scrollbar">
           {activityLog.length === 0 ? (
             <p className="text-xs text-gray-500">
               No activity recorded yet. Actions performed in the locator and box

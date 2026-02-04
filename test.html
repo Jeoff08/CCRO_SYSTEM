@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Block Layout Table</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #fff;
+  }
+
+  table {
+    border-collapse: collapse;
+    margin: 20px auto;
+  }
+
+  th, td {
+    border: 1px solid #000;
+    padding: 6px 16px;
+    text-align: center;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+
+  th {
+    font-weight: bold;
+  }
+
+  /* Spacer columns (gaps between blocks) */
+  .spacer {
+    border: none !important;
+    width: 40px;
+    padding: 0;
+  }
+</style>
+</head>
+<body>
+
+<table>
+  <!-- Header -->
+  <tr>
+    <th>B-1</th>
+    <th class="spacer"></th>
+
+    <th colspan="2">B-2</th>
+    <th class="spacer"></th>
+
+    <th colspan="2">B-3</th>
+    <th class="spacer"></th>
+
+    <th colspan="2">B-4</th>
+    <th class="spacer"></th>
+
+    <th colspan="2">B-5</th>
+    <th class="spacer"></th>
+
+    <th>B-6</th>
+  </tr>
+
+  <!-- S-A row -->
+  <tr>
+    <td>S-A</td>
+    <td class="spacer"></td>
+
+    <td>S-A</td><td>S-C</td>
+    <td class="spacer"></td>
+
+    <td>S-A</td><td>S-C</td>
+    <td class="spacer"></td>
+
+    <td>S-A</td><td>S-C</td>
+    <td class="spacer"></td>
+
+    <td>S-A</td><td>S-C</td>
+    <td class="spacer"></td>
+
+    <td>S-A</td>
+  </tr>
+
+  <!-- Upper R rows -->
+  <tr>
+    <td>R-T</td><td class="spacer"></td>
+    <td>R-T</td><td>R-T</td><td class="spacer"></td>
+    <td>R-T</td><td>R-T</td><td class="spacer"></td>
+    <td>R-T</td><td>R-T</td><td class="spacer"></td>
+    <td>R-T</td><td>R-T</td><td class="spacer"></td>
+    <td>R-T</td>
+  </tr>
+
+  <tr>
+    <td>R-5</td><td class="spacer"></td>
+    <td>R-5</td><td>R-5</td><td class="spacer"></td>
+    <td>R-5</td><td>R-5</td><td class="spacer"></td>
+    <td>R-5</td><td>R-5</td><td class="spacer"></td>
+    <td>R-5</td><td>R-5</td><td class="spacer"></td>
+    <td>R-5</td>
+  </tr>
+
+  <tr>
+    <td>R-4</td><td class="spacer"></td>
+    <td>R-4</td><td>R-4</td><td class="spacer"></td>
+    <td>R-4</td><td>R-4</td><td class="spacer"></td>
+    <td>R-4</td><td>R-4</td><td class="spacer"></td>
+    <td>R-4</td><td>R-4</td><td class="spacer"></td>
+    <td>R-4</td>
+  </tr>
+
+  <tr>
+    <td>R-3</td><td class="spacer"></td>
+    <td>R-3</td><td>R-3</td><td class="spacer"></td>
+    <td>R-3</td><td>R-3</td><td class="spacer"></td>
+    <td>R-3</td><td>R-3</td><td class="spacer"></td>
+    <td>R-3</td><td>R-3</td><td class="spacer"></td>
+    <td>R-3</td>
+  </tr>
+
+  <tr>
+    <td>R-2</td><td class="spacer"></td>
+    <td>R-2</td><td>R-2</td><td class="spacer"></td>
+    <td>R-2</td><td>R-2</td><td class="spacer"></td>
+    <td>R-2</td><td>R-2</td><td class="spacer"></td>
+    <td>R-2</td><td>R-2</td><td class="spacer"></td>
+    <td>R-2</td>
+  </tr>
+
+  <tr>
+    <td>R-1</td><td class="spacer"></td>
+    <td>R-1</td><td>R-1</td><td class="spacer"></td>
+    <td>R-1</td><td>R-1</td><td class="spacer"></td>
+    <td>R-1</td><td>R-1</td><td class="spacer"></td>
+    <td>R-1</td><td>R-1</td><td class="spacer"></td>
+    <td>R-1</td>
+  </tr>
+
+  <!-- S-B row -->
+  <tr>
+    <td>S-B</td>
+    <td class="spacer"></td>
+
+    <td>S-B</td><td>S-D</td>
+    <td class="spacer"></td>
+
+    <td>S-B</td><td>S-D</td>
+    <td class="spacer"></td>
+
+    <td>S-B</td><td>S-D</td>
+    <td class="spacer"></td>
+
+    <td>S-B</td><td>S-D</td>
+    <td class="spacer"></td>
+
+    <td>S-B</td>
+  </tr>
+
+  <!-- Lower R rows -->
+  <tr>
+    <td>R-T</td><td class="spacer"></td>
+    <td>R-T</td><td>R-T</td><td class="spacer"></td>
+    <td>R-T</td><td>R-T</td><td class="spacer"></td>
+    <td>R-T</td><td>R-T</td><td class="spacer"></td>
+    <td>R-T</td><td>R-T</td><td class="spacer"></td>
+    <td>R-T</td>
+  </tr>
+
+  <tr>
+    <td>R-5</td><td class="spacer"></td>
+    <td>R-5</td><td>R-5</td><td class="spacer"></td>
+    <td>R-5</td><td>R-5</td><td class="spacer"></td>
+    <td>R-5</td><td>R-5</td><td class="spacer"></td>
+    <td>R-5</td><td>R-5</td><td class="spacer"></td>
+    <td>R-5</td>
+  </tr>
+
+  <tr>
+    <td>R-4</td><td class="spacer"></td>
+    <td>R-4</td><td>R-4</td><td class="spacer"></td>
+    <td>R-4</td><td>R-4</td><td class="spacer"></td>
+    <td>R-4</td><td>R-4</td><td class="spacer"></td>
+    <td>R-4</td><td>R-4</td><td class="spacer"></td>
+    <td>R-4</td>
+  </tr>
+
+  <tr>
+    <td>R-3</td><td class="spacer"></td>
+    <td>R-3</td><td>R-3</td><td class="spacer"></td>
+    <td>R-3</td><td>R-3</td><td class="spacer"></td>
+    <td>R-3</td><td>R-3</td><td class="spacer"></td>
+    <td>R-3</td><td>R-3</td><td class="spacer"></td>
+    <td>R-3</td>
+  </tr>
+
+  <tr>
+    <td>R-2</td><td class="spacer"></td>
+    <td>R-2</td><td>R-2</td><td class="spacer"></td>
+    <td>R-2</td><td>R-2</td><td class="spacer"></td>
+    <td>R-2</td><td>R-2</td><td class="spacer"></td>
+    <td>R-2</td><td>R-2</td><td class="spacer"></td>
+    <td>R-2</td>
+  </tr>
+
+  <tr>
+    <td>R-1</td><td class="spacer"></td>
+    <td>R-1</td><td>R-1</td><td class="spacer"></td>
+    <td>R-1</td><td>R-1</td><td class="spacer"></td>
+    <td>R-1</td><td>R-1</td><td class="spacer"></td>
+    <td>R-1</td><td>R-1</td><td class="spacer"></td>
+    <td>R-1</td>
+  </tr>
+</table>
+
+</body>
+</html>

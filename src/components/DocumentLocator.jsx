@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useRef, useEffect } from "react";
 import CertificateBadge from "./CertificateBadge.jsx";
 
 const CERT_TYPES = [
@@ -55,18 +55,22 @@ function computeLocation({ certificateType, year, monthIndex, registryNumber }) 
   const bayOffset = ((year - 1990) % 2 + monthIndex) % 2;
   const bay = Math.min(6, certBayBase + bayOffset);
 
-  const shelf = ((monthIndex % 4) + 1); // 1–4
-  const row = ((numericRegistry - 1) % 6) + 1; // 1–6
+  // B-1 and B-6 have 2 shelves (S-A, S-B); B-2 through B-5 have 4 shelves (S-A, S-C, S-B, S-D) per test.html
+  const shelfCount = bay === 1 || bay === 6 ? 2 : 4;
+  const shelf = ((monthIndex % shelfCount) + 1);
+  const row = ((numericRegistry - 1) % 6) + 1; // 1–6 (R-T=6, R-5=5, R-4=4, R-3=3, R-2=2, R-1=1)
 
   const baseBox = ((year - 1990) % 10) + 1;
   const box = ((baseBox + Math.floor((numericRegistry - 1) / 50)) % 20) + 1;
 
+  const shelfLabel = SHELF_LETTERS_BY_BAY[bay]?.[shelf - 1] || `S-${shelf}`;
+  const rowLabel = ROW_LABELS[row] || `R-${row}`;
   const searchCode = [
     certCodeForSearch(certificateType),
     `Y-${year}`,
     `B-${bay}`,
-    `S-${shelf}`,
-    `R-${row}`,
+    shelfLabel,
+    rowLabel,
     `B-${box}`,
   ].join(";");
 
@@ -101,6 +105,13 @@ export default function DocumentLocator({ boxes, addLog, onAddBox }) {
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [showAddBoxModal, setShowAddBoxModal] = useState(false);
+  const matchCellRef = useRef(null);
+
+  useEffect(() => {
+    if (result && matchCellRef.current) {
+      matchCellRef.current.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+    }
+  }, [result]);
 
   const isYearEnabled = !!certificateType;
   const isRegistryEnabled = isYearEnabled && !!year;
@@ -252,7 +263,7 @@ export default function DocumentLocator({ boxes, addLog, onAddBox }) {
 
       <form
         onSubmit={handleSearch}
-        className="grid md:grid-cols-4 gap-4 border border-emerald-100 rounded-2xl p-4 bg-emerald-50/60"
+        className="grid md:grid-cols-4 gap-4 border border-emerald-100 rounded-2xl p-4 md:p-5 bg-emerald-50/60"
       >
         <div className="space-y-1.5">
           <Label>Type of Certificate</Label>
@@ -368,7 +379,7 @@ export default function DocumentLocator({ boxes, addLog, onAddBox }) {
       )}
 
       {result && (
-        <div className="mt-2 border border-emerald-100 rounded-2xl p-4 bg-emerald-50/70 overflow-hidden">
+        <div className="mt-2 border border-emerald-100 rounded-2xl p-4 md:p-5 bg-emerald-50/60 overflow-hidden">
           <h3 className="text-sm font-semibold text-gray-900 mb-3">
             Location result
             {matchingBox ? " (from registered box)" : " (computed)"}
@@ -400,6 +411,7 @@ export default function DocumentLocator({ boxes, addLog, onAddBox }) {
             <table className="w-full text-left text-sm min-w-[max-content]">
               <thead>
                 <tr className="border-b border-emerald-200 bg-emerald-50/70">
+                  <th className="px-3 py-2 font-semibold text-gray-600 whitespace-nowrap">Document / file location</th>
                   <th className="px-3 py-2 font-semibold text-gray-600 whitespace-nowrap">Bay#</th>
                   <th className="px-3 py-2 font-semibold text-gray-600 whitespace-nowrap">Shelf</th>
                   <th className="px-3 py-2 font-semibold text-gray-600 whitespace-nowrap">Row / Level</th>
@@ -409,14 +421,25 @@ export default function DocumentLocator({ boxes, addLog, onAddBox }) {
               </thead>
               <tbody>
                 <tr>
+                  <td className="px-3 py-2 text-gray-900 border-b border-emerald-50 font-medium">
+                    {(() => {
+                      const rb = matchingBox ? matchingBox.bay : result.bay;
+                      const rs = matchingBox ? matchingBox.shelf : result.shelf;
+                      const rr = matchingBox ? matchingBox.row : result.row;
+                      const rbox = matchingBox ? matchingBox.boxNumber : result.box;
+                      const sl = SHELF_LETTERS_BY_BAY[rb]?.[rs - 1] || `S-${rs}`;
+                      const rl = ROW_LABELS[rr] || `R-${rr}`;
+                      return `Bay ${rb} → Shelf ${sl} → Row ${rl} → Box #${rbox}`;
+                    })()}
+                  </td>
                   <td className="px-3 py-2 text-gray-900 whitespace-nowrap border-b border-emerald-50">
                     {matchingBox ? matchingBox.bay : result.bay}
                   </td>
                   <td className="px-3 py-2 text-gray-900 whitespace-nowrap border-b border-emerald-50">
-                    {matchingBox ? matchingBox.shelf : result.shelf}
+                    {SHELF_LETTERS_BY_BAY[matchingBox ? matchingBox.bay : result.bay]?.[(matchingBox ? matchingBox.shelf : result.shelf) - 1] || (matchingBox ? matchingBox.shelf : result.shelf)}
                   </td>
                   <td className="px-3 py-2 text-gray-900 whitespace-nowrap border-b border-emerald-50">
-                    {matchingBox ? matchingBox.row : result.row}
+                    {ROW_LABELS[matchingBox ? matchingBox.row : result.row] || (matchingBox ? matchingBox.row : result.row)}
                   </td>
                   <td className="px-3 py-2 text-gray-900 whitespace-nowrap border-b border-emerald-50">
                     {matchingBox ? matchingBox.boxNumber : result.box}
@@ -434,73 +457,108 @@ export default function DocumentLocator({ boxes, addLog, onAddBox }) {
             const resultShelf = matchingBox ? matchingBox.shelf : result.shelf;
             const resultRow = matchingBox ? matchingBox.row : result.row;
             const resultBox = matchingBox ? matchingBox.boxNumber : result.box;
-            const rowOrder = [6, 5, 4, 3, 2, 1]; // R-T (top) to R-1 (bottom)
-            // Map.docx: one table, B-1..B-6 side by side; B-1/B-6 have 2 shelves, B-2–B-5 have 4
             const bays = [1, 2, 3, 4, 5, 6];
-            const columns = bays.map((bay) => {
-              const count = bay === 1 || bay === 6 ? 2 : 4;
-              return { bay, shelfCount: count, labels: SHELF_LETTERS_BY_BAY[bay] };
-            });
+            const rowOrder = [6, 5, 4, 3, 2, 1]; // R-T to R-1
+            const shelfLabels = (b) => (b === 1 || b === 6 ? ["S-A", "S-B"] : ["S-A", "S-C", "S-B", "S-D"]);
+            const colsPerBay = (b) => (b === 1 || b === 6 ? 1 : 2);
+            const getShelfForCell = (bay, block, colInBlock) => {
+              if (bay === 1 || bay === 6) return block === 0 ? 1 : 2;
+              return block === 0 ? (colInBlock === 0 ? 1 : 2) : (colInBlock === 0 ? 3 : 4);
+            };
+            const blocks = [
+              { label: "S-A", shelfIndices: [0, 1] },
+              { label: "S-B", shelfIndices: [2, 3] },
+            ];
+            const SpacerCell = ({ id }) => <td className="w-6 p-0 border-none" aria-hidden />;
             return (
               <>
                 <h4 className="text-xs font-semibold text-gray-700 mt-4 mb-2">
-                  Full layout (Map.docx structure) — searched item at B-{resultBay}, {SHELF_LETTERS_BY_BAY[resultBay]?.[resultShelf - 1] || `S-${resultShelf}`}, {ROW_LABELS[resultRow]}
+                  Block layout — document located at Bay {resultBay}, Shelf {SHELF_LETTERS_BY_BAY[resultBay]?.[resultShelf - 1] || `S-${resultShelf}`}, Row {ROW_LABELS[resultRow]}
                 </h4>
-                <div className="overflow-x-auto">
-                  <div className="border border-emerald-200 rounded-xl overflow-hidden inline-block min-w-0">
-                    <table className="w-full text-center text-sm border-collapse">
+                <div className="overflow-x-auto w-full">
+                  <div className="border border-emerald-200 rounded-xl overflow-hidden inline-block min-w-full">
+                    <table className="text-center text-sm border-collapse min-w-full">
                       <thead>
                         <tr className="bg-emerald-100/80 border-b border-emerald-200">
-                          <th className="px-2 py-1.5 font-semibold text-emerald-800 border-r border-emerald-200 w-10 sticky left-0 bg-emerald-100/80">
-                            Row
-                          </th>
-                          {columns.map(({ bay, shelfCount }) => (
-                            <th
-                              key={bay}
-                              colSpan={shelfCount}
-                              className="px-1 py-1.5 font-semibold text-emerald-800 border-r border-emerald-200 last:border-r-0"
-                            >
-                              B-{bay}
-                            </th>
-                          ))}
-                        </tr>
-                        <tr className="bg-emerald-50/70 border-b border-emerald-200">
-                          <th className="px-2 py-1.5 font-semibold text-gray-600 border-r border-emerald-200 sticky left-0 bg-emerald-50/70" />
-                          {columns.map(({ bay, labels }) =>
-                            labels.map((label, i) => (
+                          <th className="px-4 py-2 font-semibold text-emerald-800 border border-emerald-200 w-14 min-w-[3.5rem] shrink-0" style={{ minWidth: "3.5rem" }} />
+                          {bays.map((bay) => (
+                            <React.Fragment key={bay}>
+                              <SpacerCell key={`h-sp-${bay}`} id={`h-sp-${bay}`} />
                               <th
-                                key={`${bay}-${i}`}
-                                className="px-1 py-1.5 font-semibold text-gray-600 border-r border-emerald-200 last:border-r-0"
+                                colSpan={colsPerBay(bay)}
+                                className="px-4 py-2 font-semibold text-emerald-800 border border-emerald-200"
                               >
-                                {label}
+                                B-{bay}
                               </th>
-                            ))
-                          )}
+                            </React.Fragment>
+                          ))}
+                          <SpacerCell key="h-sp-end" id="h-sp-end" />
                         </tr>
                       </thead>
                       <tbody>
-                        {rowOrder.map((row) => (
-                          <tr key={row} className="border-b border-emerald-100 last:border-b-0">
-                            <th className="px-2 py-1.5 font-medium text-gray-600 bg-emerald-50/50 border-r border-emerald-200 text-left pl-2 sticky left-0 bg-emerald-50/50 whitespace-nowrap">
-                              {ROW_LABELS[row]}
-                            </th>
-                            {columns.map(({ bay, shelfCount }) =>
-                              Array.from({ length: shelfCount }, (_, i) => i + 1).map((shelf) => {
-                                const isMatch = resultBay === bay && resultShelf === shelf && resultRow === row;
+                        {blocks.map((block, blockIdx) => (
+                          <React.Fragment key={block.label}>
+                            <tr className="border-b border-emerald-200">
+                              <td className="px-4 py-2 font-medium text-gray-700 bg-emerald-50/70 border border-emerald-200 w-14 min-w-[3.5rem] shrink-0" />
+                              {bays.map((bay) => {
+                                const n = colsPerBay(bay);
+                                const labels = n === 1
+                                  ? [shelfLabels(bay)[blockIdx]]
+                                  : shelfLabels(bay).slice(blockIdx * 2, blockIdx * 2 + 2);
                                 return (
-                                  <td
-                                    key={`${bay}-${shelf}`}
-                                    className={`px-1 py-1.5 border-r border-emerald-100 min-w-[2.5rem] ${
-                                      isMatch ? "bg-emerald-600 text-white font-medium ring-2 ring-emerald-800 ring-inset" : "bg-white text-gray-400"
-                                    }`}
-                                    title={isMatch ? "Searched item location" : undefined}
-                                  >
-                                    {isMatch ? `Box# ${resultBox} ✓` : "—"}
-                                  </td>
+                                  <React.Fragment key={bay}>
+                                    <SpacerCell key={`s-${block.label}-${bay}`} id={`s-${block.label}-${bay}`} />
+                                    {labels.map((lbl, ci) => (
+                                      <td
+                                        key={`${bay}-${lbl}`}
+                                        className="px-4 py-2 font-medium text-gray-600 border border-emerald-200"
+                                      >
+                                        {lbl}
+                                      </td>
+                                    ))}
+                                  </React.Fragment>
                                 );
-                              })
-                            )}
-                          </tr>
+                              })}
+                              <SpacerCell key={`s-${block.label}-end`} id={`s-${block.label}-end`} />
+                            </tr>
+                            {rowOrder.map((row) => (
+                              <tr key={`${block.label}-${row}`} className="border-b border-emerald-100">
+                                <td className="px-4 py-2 font-medium text-gray-600 bg-emerald-50/50 border border-emerald-200 w-14 min-w-[3.5rem] shrink-0 whitespace-nowrap" style={{ minWidth: "3.5rem" }}>
+                                  {ROW_LABELS[row]}
+                                </td>
+                                {bays.map((bay) => {
+                                  const n = colsPerBay(bay);
+                                  return (
+                                    <React.Fragment key={bay}>
+                                      <SpacerCell key={`r-${block.label}-${row}-${bay}`} id={`r-${block.label}-${row}-${bay}`} />
+                                      {Array.from({ length: n }, (_, ci) => {
+                                        const shelf = getShelfForCell(bay, blockIdx, ci);
+                                        const shelfLbl = SHELF_LETTERS_BY_BAY[bay]?.[shelf - 1] || `S-${shelf}`;
+                                        const rowLbl = ROW_LABELS[row] || `R-${row}`;
+                                        const cellLocation = `Bay ${bay}, Shelf ${shelfLbl}, Row ${rowLbl}`;
+                                        const isMatch = resultBay === bay && resultShelf === shelf && resultRow === row;
+                                        return (
+                                          <td
+                                            key={ci}
+                                            ref={isMatch ? matchCellRef : null}
+                                            className={`px-3 py-2 border-2 min-w-[3rem] ${
+                                              isMatch
+                                                ? "bg-emerald-600 text-white font-semibold border-emerald-700 ring-2 ring-emerald-400 ring-offset-1"
+                                                : "border-emerald-200 bg-white text-gray-400"
+                                            }`}
+                                            title={isMatch ? `Document located here: ${cellLocation} — Box #${resultBox}` : cellLocation}
+                                          >
+                                            {isMatch ? `Box# ${resultBox} ✓` : "—"}
+                                          </td>
+                                        );
+                                      })}
+                                    </React.Fragment>
+                                  );
+                                })}
+                                <SpacerCell key={`r-${block.label}-${row}-end`} id={`r-${block.label}-${row}-end`} />
+                              </tr>
+                            ))}
+                          </React.Fragment>
                         ))}
                       </tbody>
                     </table>
@@ -511,7 +569,7 @@ export default function DocumentLocator({ boxes, addLog, onAddBox }) {
           })()}
 
           <p className="mt-3 text-[11px] text-gray-600">
-            Use this information to navigate the physical storage layout.
+            Use this table to locate your document in physical storage. The highlighted cell shows Bay, Shelf, and Row. Hover any cell to see its location (e.g. Bay 1, Shelf S-B, Row R-3).
             {matchingBox && " Values from registered box."}
           </p>
         </div>

@@ -35,7 +35,7 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog }) {
       if (addLog) {
         addLog(
           "box-edit",
-          `Box ${payload.boxNumber} updated (Bay ${payload.bay}, Shelf ${payload.shelf}, Row ${payload.row}).`
+          `Box ${payload.boxNumber} updated (Bay ${payload.bay}, Shelf ${getShelfLetter(payload.bay, payload.shelf)}, Row ${payload.row}).`
         );
       }
       setShowAddBoxModal(false);
