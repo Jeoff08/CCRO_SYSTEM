@@ -109,15 +109,22 @@ export default function DocumentLocator({ boxes, addLog, onAddBox }) {
   const matchingBox = useMemo(() => {
     if (!certificateType || !year || monthIndex == null || boxes.length === 0)
       return null;
+    const yearNum = Number(year);
     return (
       boxes.find(
-        (b) =>
-          b.certificateType === certificateType &&
-          String(b.year) === String(year) &&
-          (b.monthIndex === monthIndex ||
-            (b.monthIndexTo != null &&
-              monthIndex >= b.monthIndex &&
-              monthIndex <= b.monthIndexTo))
+        (b) => {
+          const yearInRange = b.yearTo != null
+            ? yearNum >= b.year && yearNum <= b.yearTo
+            : Number(b.year) === yearNum;
+          return (
+            b.certificateType === certificateType &&
+            yearInRange &&
+            (b.monthIndex === monthIndex ||
+              (b.monthIndexTo != null &&
+                monthIndex >= b.monthIndex &&
+                monthIndex <= b.monthIndexTo))
+          );
+        }
       ) || null
     );
   }, [boxes, certificateType, year, monthIndex]);
@@ -366,6 +373,29 @@ export default function DocumentLocator({ boxes, addLog, onAddBox }) {
             Location result
             {matchingBox ? " (from registered box)" : " (computed)"}
           </h3>
+
+          {(() => {
+            const resultBay = matchingBox ? matchingBox.bay : result.bay;
+            const resultShelf = matchingBox ? matchingBox.shelf : result.shelf;
+            const resultRow = matchingBox ? matchingBox.row : result.row;
+            const resultBox = matchingBox ? matchingBox.boxNumber : result.box;
+            const shelfLabel = SHELF_LETTERS_BY_BAY[resultBay]?.[resultShelf - 1] || `S-${resultShelf}`;
+            const rowLabel = ROW_LABELS[resultRow] || `R-${resultRow}`;
+            return (
+              <div className="mb-4 p-4 rounded-xl bg-white border-2 border-emerald-200">
+                <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700 mb-2">
+                  Where the document is located
+                </p>
+                <p className="text-base font-semibold text-gray-900">
+                  Bay {resultBay} → Shelf {shelfLabel} → Row {rowLabel} → Box #{resultBox}
+                </p>
+                <p className="mt-2 text-sm text-gray-600">
+                  Go to Bay {resultBay}, find Shelf {shelfLabel}, then Row {rowLabel}. The document is in Box #{resultBox}.
+                </p>
+              </div>
+            );
+          })()}
+
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm min-w-[max-content]">
               <thead>

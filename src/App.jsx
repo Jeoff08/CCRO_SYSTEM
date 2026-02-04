@@ -37,7 +37,7 @@ export default function App() {
       addLog("logout", `User "${user.username}" logged out.`);
     }
     setUser(null);
-    setView(VIEWS.LANDING);
+    setView(VIEWS.LOGIN);
   };
 
   if (view === VIEWS.LANDING) {

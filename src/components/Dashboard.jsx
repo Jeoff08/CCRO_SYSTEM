@@ -55,16 +55,23 @@ export default function Dashboard({ user, onLogout, activityLog, addLog }) {
   return (
     <div className="min-h-screen bg-white">
       <header className="border-b border-emerald-200 bg-white/80 backdrop-blur">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-700">
-              CCRO Document Locator
-            </p>
-            <p className="text-sm font-medium text-gray-900">
-              Archiving Dashboard
-            </p>
+        <div className="flex items-center w-full">
+          <div className="w-56 shrink-0 px-3 py-3 flex items-center gap-2 border-r border-emerald-200">
+            <img
+              src="/461661670_1118300596319054_8742723372426556351_n.jpg"
+              alt="CCRO"
+              className="h-12 w-12 rounded-xl object-cover shrink-0 border-2 border-black"
+            />
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 leading-tight">
+                CCRO Document Locator
+              </p>
+              <p className="text-xs font-medium text-gray-900 leading-tight">
+                Archiving Dashboard
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex-1 px-4 py-3 flex items-center justify-end gap-3 min-w-0">
             {user && (
               <div className="text-right">
                 <p className="text-xs font-semibold text-gray-900">
@@ -73,20 +80,13 @@ export default function Dashboard({ user, onLogout, activityLog, addLog }) {
                 <p className="text-[11px] text-gray-500">{user.role}</p>
               </div>
             )}
-            <button
-              type="button"
-              onClick={onLogout}
-              className="inline-flex items-center justify-center rounded-full border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 transition"
-            >
-              Logout
-            </button>
           </div>
         </div>
       </header>
 
       <div className="flex min-h-[calc(100vh-57px)]">
         <aside className="w-56 shrink-0 border-r border-emerald-200 bg-white/80 backdrop-blur flex flex-col py-4">
-          <nav className="flex flex-col gap-0.5 px-3 text-sm font-medium text-gray-700">
+          <nav className="flex flex-col gap-0.5 px-3 text-sm font-medium text-gray-700 flex-1">
             {SIDEBAR_ITEMS.map((item) => (
               <SidebarItem
                 key={item.id}
@@ -97,10 +97,19 @@ export default function Dashboard({ user, onLogout, activityLog, addLog }) {
               </SidebarItem>
             ))}
           </nav>
+          <div className="shrink-0 border-t-2 border-emerald-200 px-3 pt-4 mt-2">
+            <button
+              type="button"
+              onClick={onLogout}
+              className="w-full inline-flex items-center justify-center rounded-full border border-emerald-300 bg-white px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 transition"
+            >
+              Logout
+            </button>
+          </div>
         </aside>
 
         <main className="flex-1 overflow-auto px-4 py-6">
-          <section className="max-w-4xl mx-auto bg-white rounded-3xl border border-emerald-100 shadow-sm p-5 md:p-6">
+          <section className="max-w-6xl mx-auto bg-white rounded-3xl border border-emerald-100 shadow-sm p-5 md:p-6">
             {activeTab === TABS.BOXES && (
               <BoxManagement
                 boxes={boxes}
