@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from "react";
 import DocumentLocator from "./DocumentLocator.jsx";
 import BoxManagement from "./BoxManagement.jsx";
+import LocationManagement, { DEFAULT_ROW_LABELS, DEFAULT_SHELF_LETTERS_BY_BAY } from "./LocationManagement.jsx";
 
 const BOXES_STORAGE_KEY = "ccro-archive-boxes";
+const LOCATION_PROFILES_KEY = "ccro-location-profiles";
+const ACTIVE_LOCATION_PROFILE_KEY = "ccro-location-profile-active";
 
 function loadBoxesFromStorage() {
   try {
@@ -23,10 +26,30 @@ function saveBoxesToStorage(boxes) {
   }
 }
 
+function loadLocationProfilesFromStorage() {
+  try {
+    const raw = localStorage.getItem(LOCATION_PROFILES_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function loadActiveLocationProfileIdFromStorage() {
+  try {
+    return localStorage.getItem(ACTIVE_LOCATION_PROFILE_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
 const TABS = {
   DASHBOARD: "dashboard",
   BOXES: "boxes",
   LOCATOR: "locator",
+  LOCATIONS: "locations",
 };
 
 const SIDEBAR_ITEMS = [
@@ -57,16 +80,64 @@ const SIDEBAR_ITEMS = [
       </svg>
     ),
   },
+  {
+    id: TABS.LOCATIONS,
+    label: "Location Management",
+    icon: (
+      <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 12m0 0a4 4 0 10-5.657 5.657 4 4 0 005.657-5.657zM13.414 12l2.829-2.829a4 4 0 00-5.657-5.657L7.757 6.343" />
+      </svg>
+    ),
+  },
 ];
 
 export default function Dashboard({ user, onLogout, activityLog, addLog }) {
   const [activeTab, setActiveTab] = useState(TABS.DASHBOARD);
   const [boxes, setBoxes] = useState(() => loadBoxesFromStorage());
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [locationProfiles, setLocationProfiles] = useState(() => {
+    const loaded = loadLocationProfilesFromStorage();
+    if (loaded && loaded.length) return loaded;
+    return [
+      {
+        id: crypto.randomUUID(),
+        name: "Default mapping",
+        shelfLettersByBay: DEFAULT_SHELF_LETTERS_BY_BAY,
+        rowLabels: DEFAULT_ROW_LABELS,
+        updatedAt: new Date().toISOString(),
+      },
+    ];
+  });
+  const [activeLocationProfileId, setActiveLocationProfileId] = useState(() => loadActiveLocationProfileIdFromStorage());
 
   useEffect(() => {
     saveBoxesToStorage(boxes);
   }, [boxes]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LOCATION_PROFILES_KEY, JSON.stringify(locationProfiles));
+    } catch {
+      // ignore
+    }
+  }, [locationProfiles]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ACTIVE_LOCATION_PROFILE_KEY, activeLocationProfileId || "");
+    } catch {
+      // ignore
+    }
+  }, [activeLocationProfileId]);
+
+  const activeLocationProfile =
+    locationProfiles.find((p) => p.id === activeLocationProfileId) || locationProfiles[0];
+
+  useEffect(() => {
+    if (!activeLocationProfileId && locationProfiles.length) {
+      setActiveLocationProfileId(locationProfiles[0].id);
+    }
+  }, [activeLocationProfileId, locationProfiles]);
 
   const handleAddBox = (box) => {
     setBoxes((prev) => [...prev, box]);
@@ -191,10 +262,43 @@ export default function Dashboard({ user, onLogout, activityLog, addLog }) {
                 onAdd={handleAddBox}
                 onUpdate={handleUpdateBox}
                 addLog={addLog}
+                shelfLettersByBay={activeLocationProfile?.shelfLettersByBay}
               />
             )}
             {activeTab === TABS.LOCATOR && (
-              <DocumentLocator boxes={boxes} addLog={addLog} />
+              <DocumentLocator
+                boxes={boxes}
+                addLog={addLog}
+                shelfLettersByBay={activeLocationProfile?.shelfLettersByBay}
+                rowLabels={activeLocationProfile?.rowLabels}
+              />
+            )}
+            {activeTab === TABS.LOCATIONS && (
+              <LocationManagement
+                profiles={locationProfiles}
+                activeProfileId={activeLocationProfileId}
+                onSetActiveProfileId={setActiveLocationProfileId}
+                onUpsertProfile={(profile) =>
+                  setLocationProfiles((prev) => {
+                    const idx = prev.findIndex((p) => p.id === profile.id);
+                    if (idx >= 0) {
+                      const next = [...prev];
+                      next[idx] = profile;
+                      return next;
+                    }
+                    return [profile, ...prev];
+                  })
+                }
+                onDeleteProfile={(id) =>
+                  setLocationProfiles((prev) => {
+                    const next = prev.filter((p) => p.id !== id);
+                    if (activeLocationProfileId === id && next.length) {
+                      setActiveLocationProfileId(next[0].id);
+                    }
+                    return next;
+                  })
+                }
+              />
             )}
           </section>
         </main>

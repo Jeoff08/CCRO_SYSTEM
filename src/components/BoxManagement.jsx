@@ -23,7 +23,7 @@ const MONTHS = [
   "December",
 ];
 
-const SHELF_LETTERS_BY_BAY = {
+const DEFAULT_SHELF_LETTERS_BY_BAY = {
   1: ["S-A", "S-B"],
   2: ["S-A", "S-C", "S-B", "S-D"],
   3: ["S-A", "S-C", "S-B", "S-D"],
@@ -32,22 +32,24 @@ const SHELF_LETTERS_BY_BAY = {
   6: ["S-A", "S-B"],
 };
 
-function getShelfLetter(bay, shelfNumber) {
-  return SHELF_LETTERS_BY_BAY[bay]?.[shelfNumber - 1] || `S-${shelfNumber}`;
+function getShelfLetter(shelfLettersByBay, bay, shelfNumber) {
+  return shelfLettersByBay[bay]?.[shelfNumber - 1] || `S-${shelfNumber}`;
 }
 
-function getShelfNumberFromLetter(bay, letter) {
-  const mapping = SHELF_LETTERS_BY_BAY[bay];
+function getShelfNumberFromLetter(shelfLettersByBay, bay, letter) {
+  const mapping = shelfLettersByBay[bay];
   if (!mapping) return null;
   const index = mapping.findIndex((l) => l === letter);
   return index >= 0 ? index + 1 : null;
 }
 
-export default function BoxManagement({ boxes, onAdd, onUpdate, addLog }) {
+export default function BoxManagement({ boxes, onAdd, onUpdate, addLog, shelfLettersByBay }) {
+  const shelfMap = shelfLettersByBay || DEFAULT_SHELF_LETTERS_BY_BAY;
   const [editingBox, setEditingBox] = useState(null);
   const [showAddBoxModal, setShowAddBoxModal] = useState(false);
   const [modalStep, setModalStep] = useState("form"); // 'form' | 'confirm' | 'success'
   const [pendingBoxPayload, setPendingBoxPayload] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleSave = (payload) => {
     if (editingBox) {
@@ -55,7 +57,7 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog }) {
       if (addLog) {
         addLog(
           "box-edit",
-          `Box ${payload.boxNumber} updated (Bay ${payload.bay}, Shelf ${getShelfLetter(payload.bay, payload.shelf)}, Row ${payload.row}).`
+          `Box ${payload.boxNumber} updated (Bay ${payload.bay}, Shelf ${getShelfLetter(shelfMap, payload.bay, payload.shelf)}, Row ${payload.row}).`
         );
       }
       setShowAddBoxModal(false);
@@ -72,7 +74,7 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog }) {
     if (addLog) {
       addLog(
         "box-add",
-        `Box ${payload.boxNumber} created (Bay ${payload.bay}, Shelf ${getShelfLetter(payload.bay, payload.shelf)}, Row ${payload.row}).`
+        `Box ${payload.boxNumber} created (Bay ${payload.bay}, Shelf ${getShelfLetter(shelfMap, payload.bay, payload.shelf)}, Row ${payload.row}).`
       );
     }
     setModalStep("success");
@@ -106,13 +108,45 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog }) {
   const sortedBoxes = useMemo(
     () =>
       [...boxes].sort((a, b) => {
+        const na = Number(a.boxNumber);
+        const nb = Number(b.boxNumber);
+        if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
+        if (String(a.boxNumber) !== String(b.boxNumber)) return String(a.boxNumber).localeCompare(String(b.boxNumber));
         if (a.bay !== b.bay) return a.bay - b.bay;
         if (a.shelf !== b.shelf) return a.shelf - b.shelf;
-        if (a.row !== b.row) return a.row - b.row;
-        return a.boxNumber - b.boxNumber;
+        return a.row - b.row;
       }),
     [boxes]
   );
+
+  const filteredBoxes = useMemo(() => {
+    if (!searchQuery.trim()) return sortedBoxes;
+    const q = searchQuery.trim().toLowerCase();
+    return sortedBoxes.filter((box) => {
+      const boxNum = String(box.boxNumber ?? "");
+      const bay = String(box.bay ?? "");
+      const shelf = getShelfLetter(shelfMap, box.bay, box.shelf);
+      const row = String(box.row ?? "");
+      const cert = String(box.certificateType ?? "").toLowerCase();
+      const year = String(box.year ?? "");
+      const yearTo = String(box.yearTo ?? "");
+      const month = MONTHS[box.monthIndex] ?? "";
+      const registry = String(box.registryRange ?? "").toLowerCase();
+      const remark = String(box.remark ?? "").toLowerCase();
+      return (
+        boxNum.toLowerCase().includes(q) ||
+        bay.includes(q) ||
+        shelf.toLowerCase().includes(q) ||
+        row.includes(q) ||
+        cert.includes(q) ||
+        year.includes(q) ||
+        yearTo.includes(q) ||
+        month.toLowerCase().includes(q) ||
+        registry.includes(q) ||
+        remark.includes(q)
+      );
+    });
+  }, [sortedBoxes, searchQuery, shelfMap]);
 
   return (
     <div className="space-y-6">
@@ -175,6 +209,7 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog }) {
                   onSaved={handleSave}
                   onCancel={closeModal}
                   existingBoxes={boxes}
+                  shelfLettersByBay={shelfMap}
                 />
               )}
               {modalStep === "confirm" && pendingBoxPayload && (
@@ -182,6 +217,7 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog }) {
                   payload={pendingBoxPayload}
                   onBack={backToForm}
                   onConfirm={handleConfirmAdd}
+                  shelfLettersByBay={shelfMap}
                 />
               )}
               {modalStep === "success" && (
@@ -193,20 +229,40 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog }) {
       )}
 
       <div className="border border-emerald-100 rounded-2xl p-4 bg-white-40/70 max-h-[28rem] overflow-hidden flex flex-col">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
             <h3 className="text-sm font-semibold text-gray-900">
               Registered Boxes
             </h3>
-            <p className="text-[11px] text-gray-500">
-              {sortedBoxes.length} record
-              {sortedBoxes.length === 1 ? "" : "s"}
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search boxes..."
+                className="rounded-xl border border-emerald-200 bg-white px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 min-w-[10rem]"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="inline-flex items-center justify-center rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-emerald-50"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
           </div>
+          <p className="text-[11px] text-gray-500 mb-2">
+            {filteredBoxes.length} record{filteredBoxes.length === 1 ? "" : "s"}
+            {searchQuery.trim() ? ` (filtered from ${sortedBoxes.length})` : ""}
+          </p>
 
           <div className="overflow-auto custom-scrollbar -mx-2 px-2 flex-1 min-h-0">
-            {sortedBoxes.length === 0 ? (
+            {filteredBoxes.length === 0 ? (
               <p className="text-xs text-gray-500">
-                No boxes registered yet. Click &quot;Add box&quot; to register a box.
+                {searchQuery.trim()
+                  ? "No boxes match your search. Try different terms or clear the search."
+                  : "No boxes registered yet. Click \"Add box\" to register a box."}
               </p>
             ) : (
               <div className="overflow-x-auto">
@@ -226,14 +282,14 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedBoxes.map((box) => (
+                    {filteredBoxes.map((box) => (
                       <tr
                         key={box.id}
                         className="border-b border-emerald-50 bg-white hover:bg-emerald-50/50"
                       >
                         <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{box.boxNumber}</td>
                         <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{box.bay}</td>
-                        <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{getShelfLetter(box.bay, box.shelf)}</td>
+                        <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{getShelfLetter(shelfMap, box.bay, box.shelf)}</td>
                         <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{box.row}</td>
                         <td className="px-3 py-2 text-gray-900 whitespace-nowrap">
                           {box.monthIndexTo != null && box.monthIndexTo !== box.monthIndex
@@ -272,7 +328,7 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog }) {
   );
 }
 
-function ConfirmBoxStep({ payload, onBack, onConfirm }) {
+function ConfirmBoxStep({ payload, onBack, onConfirm, shelfLettersByBay }) {
   const yearLabel = payload.yearTo != null ? `${payload.year} – ${payload.yearTo}` : String(payload.year);
   const monthLabel = payload.monthIndexTo != null && payload.monthIndexTo !== payload.monthIndex
     ? `${MONTHS[payload.monthIndex]} – ${MONTHS[payload.monthIndexTo]}`
@@ -283,7 +339,7 @@ function ConfirmBoxStep({ payload, onBack, onConfirm }) {
     { label: "Month", value: monthLabel },
     { label: "Box #", value: payload.boxNumber },
     { label: "Bay", value: payload.bay },
-    { label: "Shelf", value: getShelfLetter(payload.bay, payload.shelf) },
+    { label: "Shelf", value: getShelfLetter(shelfLettersByBay || DEFAULT_SHELF_LETTERS_BY_BAY, payload.bay, payload.shelf) },
     { label: "Row / Level", value: payload.row },
     { label: "Registry range", value: payload.registryRange || "—" },
     { label: "Remark", value: payload.remark || "—" },
@@ -358,7 +414,8 @@ function SuccessBoxOutput({ onDone }) {
   );
 }
 
-export function BoxForm({ editingBox, prefillPayload, onSaved, onCancel, existingBoxes }) {
+export function BoxForm({ editingBox, prefillPayload, onSaved, onCancel, existingBoxes, shelfLettersByBay }) {
+  const shelfMap = shelfLettersByBay || DEFAULT_SHELF_LETTERS_BY_BAY;
   const source = editingBox || prefillPayload || {};
   const [certificateType, setCertificateType] = useState(source.certificateType || "");
   const [year, setYear] = useState(source.year !== undefined && source.year !== null ? String(source.year) : "");
@@ -369,7 +426,7 @@ export function BoxForm({ editingBox, prefillPayload, onSaved, onCancel, existin
   const [bay, setBay] = useState(source.bay !== undefined && source.bay !== null ? String(source.bay) : "");
   const initialShelfLetter =
     source.shelf !== undefined && source.shelf !== null && source.bay !== undefined && source.bay !== null
-      ? getShelfLetter(source.bay, source.shelf)
+      ? getShelfLetter(shelfMap, source.bay, source.shelf)
       : "";
   const [shelfLetter, setShelfLetter] = useState(initialShelfLetter);
   const [row, setRow] = useState(source.row !== undefined && source.row !== null ? String(source.row) : "");
@@ -383,7 +440,7 @@ export function BoxForm({ editingBox, prefillPayload, onSaved, onCancel, existin
       return;
     }
     const bayNum = Number(bay);
-    const allowedShelves = SHELF_LETTERS_BY_BAY[bayNum];
+    const allowedShelves = shelfMap[bayNum];
     if (!allowedShelves || (shelfLetter && !allowedShelves.includes(shelfLetter))) {
       setShelfLetter("");
     }
@@ -391,7 +448,7 @@ export function BoxForm({ editingBox, prefillPayload, onSaved, onCancel, existin
 
   const bayNumForShelves = Number(bay);
   const availableShelves =
-    Number.isNaN(bayNumForShelves) || !bay ? [] : SHELF_LETTERS_BY_BAY[bayNumForShelves] || [];
+    Number.isNaN(bayNumForShelves) || !bay ? [] : shelfMap[bayNumForShelves] || [];
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -427,7 +484,7 @@ export function BoxForm({ editingBox, prefillPayload, onSaved, onCancel, existin
 
     const bayNum = Number(bay);
     const rowNum = Number(row);
-    const shelfNum = getShelfNumberFromLetter(bayNum, shelfLetter);
+    const shelfNum = getShelfNumberFromLetter(shelfMap, bayNum, shelfLetter);
 
     if (
       bayNum < 1 ||
