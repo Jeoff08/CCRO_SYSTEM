@@ -302,7 +302,7 @@ export default function DocumentLocator({
 
       <form
         onSubmit={handleSearch}
-        className="grid md:grid-cols-4 gap-4 border border-emerald-100 rounded-2xl p-4 md:p-5 bg-emerald-50/60"
+        className="grid md:grid-cols-3 gap-3 border border-emerald-100 rounded-2xl p-4 md:p-5 bg-emerald-50/60"
       >
         <div className="space-y-1.5">
           <Label>Type of Certificate</Label>
@@ -367,7 +367,7 @@ export default function DocumentLocator({
           />
         </div>
 
-        <div className="space-y-1.5">
+        {/* <div className="space-y-1.5">
           <Label disabled={!isMonthEnabled}>Month</Label>
           <select
             value={monthIndex ?? ""}
@@ -386,12 +386,12 @@ export default function DocumentLocator({
               </option>
             ))}
           </select>
-        </div>
+        </div> */}
 
         <div className="md:col-span-4 flex flex-wrap items-center justify-between gap-3 pt-1">
           <div className="flex items-center gap-2 text-[11px] text-gray-500">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            Type → Year → Registry number → Month (each unlocks the next).
+            Type → Year → Registry number.
           </div>
           <div className="flex gap-2">
             <button
