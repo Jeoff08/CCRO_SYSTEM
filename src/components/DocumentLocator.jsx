@@ -9,20 +9,6 @@ const CERT_TYPES = [
 ];
 
 const YEARS = Array.from({ length: 87 }, (_, i) => 1944 + i); // 1944–2030
-const MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
 
 // Defaults (used when no Location Management profile is provided)
 const DEFAULT_ROW_LABELS = { 1: "R-1", 2: "R-2", 3: "R-3", 4: "R-4", 5: "R-5", 6: "R-T" };
@@ -34,53 +20,6 @@ const DEFAULT_SHELF_LETTERS_BY_BAY = {
   5: ["S-A", "S-C", "S-B", "S-D"],
   6: ["S-A", "S-B"],
 };
-
-function computeLocation({ certificateType, year, monthIndex, registryNumber }) {
-  if (!certificateType || !year || monthIndex == null || !registryNumber) {
-    return null;
-  }
-
-  const numericRegistry = parseInt(registryNumber, 10);
-  if (Number.isNaN(numericRegistry) || numericRegistry <= 0) {
-    return null;
-  }
-
-  const certBayBase = {
-    COLB: 1,
-    COM: 3,
-    COD: 5,
-  }[certificateType];
-
-  const bayOffset = ((year - 1990) % 2 + monthIndex) % 2;
-  const bay = Math.min(6, certBayBase + bayOffset);
-
-  // B-1 and B-6 have 2 shelves (S-A, S-B); B-2 through B-5 have 4 shelves (S-A, S-C, S-B, S-D) per test.html
-  const shelfCount = bay === 1 || bay === 6 ? 2 : 4;
-  const shelf = ((monthIndex % shelfCount) + 1);
-  const row = ((numericRegistry - 1) % 6) + 1; // 1–6 (R-T=6, R-5=5, R-4=4, R-3=3, R-2=2, R-1=1)
-
-  const baseBox = ((year - 1990) % 10) + 1;
-  const box = ((baseBox + Math.floor((numericRegistry - 1) / 50)) % 20) + 1;
-
-  const shelfLabel = SHELF_LETTERS_BY_BAY[bay]?.[shelf - 1] || `S-${shelf}`;
-  const rowLabel = ROW_LABELS[row] || `R-${row}`;
-  const searchCode = [
-    certCodeForSearch(certificateType),
-    `Y-${year}`,
-    `B-${bay}`,
-    shelfLabel,
-    rowLabel,
-    `B-${box}`,
-  ].join(";");
-
-  return {
-    bay,
-    shelf,
-    row,
-    box,
-    searchCode,
-  };
-}
 
 function certCodeForSearch(type) {
   switch (type) {
@@ -126,7 +65,6 @@ export default function DocumentLocator({
 }) {
   const [certificateType, setCertificateType] = useState("");
   const [year, setYear] = useState("");
-  const [monthIndex, setMonthIndex] = useState(null);
   const [registryNumber, setRegistryNumber] = useState("");
   const [touched, setTouched] = useState(false);
   const [result, setResult] = useState(null);
@@ -134,11 +72,9 @@ export default function DocumentLocator({
   const [showAddBoxModal, setShowAddBoxModal] = useState(false);
   const isYearEnabled = !!certificateType;
   const isRegistryEnabled = isYearEnabled && !!year;
-  const isMonthEnabled = isRegistryEnabled && !!registryNumber.trim();
 
   const matchingBox = useMemo(() => {
-    if (!certificateType || !year || monthIndex == null || boxes.length === 0)
-      return null;
+    if (!certificateType || !year || boxes.length === 0) return null;
     const yearNum = Number(year);
     return (
       boxes.find(
@@ -148,23 +84,19 @@ export default function DocumentLocator({
             : Number(b.year) === yearNum;
           return (
             b.certificateType === certificateType &&
-            yearInRange &&
-            (b.monthIndex === monthIndex ||
-              (b.monthIndexTo != null &&
-                monthIndex >= b.monthIndex &&
-                monthIndex <= b.monthIndexTo))
+            yearInRange
           );
         }
       ) || null
     );
-  }, [boxes, certificateType, year, monthIndex]);
+  }, [boxes, certificateType, year]);
 
   const handleSearch = (e) => {
     e.preventDefault();
     setTouched(true);
     setError("");
 
-    if (!certificateType || !year || monthIndex == null || !registryNumber) {
+    if (!certificateType || !year || !registryNumber) {
       setError("Please complete all search fields in order.");
       return;
     }
@@ -178,11 +110,11 @@ export default function DocumentLocator({
     if (!matchingBox) {
       setResult(null);
       setError(
-        "No matching registered box found for the selected Type/Year/Month. Please add/register the box in Box Management first."
+        "No matching registered box found for the selected Type/Year. Please add/register the box in Box Management first."
       );
       if (addLog) {
         addLog("search", {
-          message: `Search (no match) for ${certificateType} - ${year} ${MONTHS[monthIndex]} #${registryNumber}`,
+          message: `Search (no match) for ${certificateType} - ${year} #${registryNumber}`,
         });
       }
       return;
@@ -210,7 +142,7 @@ export default function DocumentLocator({
 
     if (addLog) {
       addLog("search", {
-        message: `Search for ${certificateType} - ${year} ${MONTHS[monthIndex]} #${registryNumber}`,
+        message: `Search for ${certificateType} - ${year} #${registryNumber}`,
         searchCode: registeredResult.searchCode,
       });
     }
@@ -219,7 +151,6 @@ export default function DocumentLocator({
   const handleReset = () => {
     setCertificateType("");
     setYear("");
-    setMonthIndex(null);
     setRegistryNumber("");
     setTouched(false);
     setResult(null);
@@ -283,7 +214,7 @@ export default function DocumentLocator({
             Document Locator
           </h2>
           <p className="text-sm text-gray-600">
-            Locate physical boxes using certificate type, year, registry number, and month.
+            Locate physical boxes using certificate type, year, and registry number.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -302,7 +233,7 @@ export default function DocumentLocator({
 
       <form
         onSubmit={handleSearch}
-        className="grid md:grid-cols-3 gap-3 border border-emerald-100 rounded-2xl p-4 md:p-5 bg-emerald-50/60"
+        className="grid md:grid-cols-3 gap-4 border border-emerald-100 rounded-2xl p-4 md:p-5 bg-emerald-50/60"
       >
         <div className="space-y-1.5">
           <Label>Type of Certificate</Label>
@@ -311,7 +242,6 @@ export default function DocumentLocator({
             onChange={(e) => {
               setCertificateType(e.target.value);
               setYear("");
-              setMonthIndex(null);
               setRegistryNumber("");
               setResult(null);
             }}
@@ -332,7 +262,6 @@ export default function DocumentLocator({
             value={year}
             onChange={(e) => {
               setYear(e.target.value);
-              setMonthIndex(null);
               setRegistryNumber("");
               setResult(null);
             }}
@@ -358,7 +287,6 @@ export default function DocumentLocator({
             onChange={(e) => {
               const value = e.target.value.replace(/[^\d]/g, "");
               setRegistryNumber(value);
-              setMonthIndex(null);
               setResult(null);
             }}
             disabled={!isRegistryEnabled}
@@ -367,31 +295,10 @@ export default function DocumentLocator({
           />
         </div>
 
-        {/* <div className="space-y-1.5">
-          <Label disabled={!isMonthEnabled}>Month</Label>
-          <select
-            value={monthIndex ?? ""}
-            onChange={(e) => {
-              const value = e.target.value === "" ? null : Number(e.target.value);
-              setMonthIndex(value);
-              setResult(null);
-            }}
-            disabled={!isMonthEnabled}
-            className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm text-gray-900 disabled:bg-gray-50 disabled:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-          >
-            <option value="">Select month</option>
-            {MONTHS.map((m, index) => (
-              <option key={m} value={index}>
-                {m}
-              </option>
-            ))}
-          </select>
-        </div> */}
-
-        <div className="md:col-span-4 flex flex-wrap items-center justify-between gap-3 pt-1">
+        <div className="md:col-span-3 flex flex-wrap items-center justify-between gap-3 pt-1">
           <div className="flex items-center gap-2 text-[11px] text-gray-500">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            Type → Year → Registry number.
+            Type → Year → Registry number (each unlocks the next).
           </div>
           <div className="flex gap-2">
             <button
