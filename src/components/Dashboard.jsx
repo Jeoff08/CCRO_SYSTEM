@@ -2,48 +2,7 @@ import React, { useState, useEffect } from "react";
 import DocumentLocator from "./DocumentLocator.jsx";
 import BoxManagement from "./BoxManagement.jsx";
 import LocationManagement, { DEFAULT_ROW_LABELS, DEFAULT_SHELF_LETTERS_BY_BAY } from "./LocationManagement.jsx";
-
-const BOXES_STORAGE_KEY = "ccro-archive-boxes";
-const LOCATION_PROFILES_KEY = "ccro-location-profiles";
-const ACTIVE_LOCATION_PROFILE_KEY = "ccro-location-profile-active";
-
-function loadBoxesFromStorage() {
-  try {
-    const raw = localStorage.getItem(BOXES_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveBoxesToStorage(boxes) {
-  try {
-    localStorage.setItem(BOXES_STORAGE_KEY, JSON.stringify(boxes));
-  } catch {
-    // ignore
-  }
-}
-
-function loadLocationProfilesFromStorage() {
-  try {
-    const raw = localStorage.getItem(LOCATION_PROFILES_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-function loadActiveLocationProfileIdFromStorage() {
-  try {
-    return localStorage.getItem(ACTIVE_LOCATION_PROFILE_KEY) || "";
-  } catch {
-    return "";
-  }
-}
+import { boxesAPI, locationProfilesAPI } from "../api.js";
 
 const TABS = {
   DASHBOARD: "dashboard",
@@ -93,42 +52,47 @@ const SIDEBAR_ITEMS = [
 
 export default function Dashboard({ user, onLogout, activityLog, addLog }) {
   const [activeTab, setActiveTab] = useState(TABS.DASHBOARD);
-  const [boxes, setBoxes] = useState(() => loadBoxesFromStorage());
+  const [boxes, setBoxes] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [locationProfiles, setLocationProfiles] = useState(() => {
-    const loaded = loadLocationProfilesFromStorage();
-    if (loaded && loaded.length) return loaded;
-    return [
-      {
-        id: crypto.randomUUID(),
-        name: "Default mapping",
-        shelfLettersByBay: DEFAULT_SHELF_LETTERS_BY_BAY,
-        rowLabels: DEFAULT_ROW_LABELS,
-        updatedAt: new Date().toISOString(),
-      },
-    ];
-  });
-  const [activeLocationProfileId, setActiveLocationProfileId] = useState(() => loadActiveLocationProfileIdFromStorage());
+  const [locationProfiles, setLocationProfiles] = useState([]);
+  const [activeLocationProfileId, setActiveLocationProfileId] = useState("");
+  const [loading, setLoading] = useState(true);
 
+  // Load boxes and location profiles on mount
   useEffect(() => {
-    saveBoxesToStorage(boxes);
-  }, [boxes]);
+    loadData();
+  }, []);
 
-  useEffect(() => {
+  const loadData = async () => {
+    setLoading(true);
     try {
-      localStorage.setItem(LOCATION_PROFILES_KEY, JSON.stringify(locationProfiles));
-    } catch {
-      // ignore
-    }
-  }, [locationProfiles]);
+      const [boxesData, profilesData] = await Promise.all([
+        boxesAPI.getAll(),
+        locationProfilesAPI.getAll(),
+      ]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(ACTIVE_LOCATION_PROFILE_KEY, activeLocationProfileId || "");
-    } catch {
-      // ignore
+      setBoxes(boxesData);
+      setLocationProfiles(profilesData.length > 0 ? profilesData : [
+        {
+          id: crypto.randomUUID(),
+          name: "Default mapping",
+          shelfLettersByBay: DEFAULT_SHELF_LETTERS_BY_BAY,
+          rowLabels: DEFAULT_ROW_LABELS,
+          updatedAt: new Date().toISOString(),
+        },
+      ]);
+
+      // Set active profile
+      const activeProfile = profilesData.find((p) => p.isActive) || profilesData[0];
+      if (activeProfile) {
+        setActiveLocationProfileId(activeProfile.id);
+      }
+    } catch (error) {
+      console.error("Failed to load data:", error);
+    } finally {
+      setLoading(false);
     }
-  }, [activeLocationProfileId]);
+  };
 
   const activeLocationProfile =
     locationProfiles.find((p) => p.id === activeLocationProfileId) || locationProfiles[0];
@@ -139,12 +103,24 @@ export default function Dashboard({ user, onLogout, activityLog, addLog }) {
     }
   }, [activeLocationProfileId, locationProfiles]);
 
-  const handleAddBox = (box) => {
-    setBoxes((prev) => [...prev, box]);
+  const handleAddBox = async (box) => {
+    try {
+      const newBox = await boxesAPI.create(box);
+      setBoxes((prev) => [...prev, newBox]);
+    } catch (error) {
+      console.error("Failed to create box:", error);
+      throw error;
+    }
   };
 
-  const handleUpdateBox = (updated) => {
-    setBoxes((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
+  const handleUpdateBox = async (updated) => {
+    try {
+      const updatedBox = await boxesAPI.update(updated.id, updated);
+      setBoxes((prev) => prev.map((b) => (b.id === updated.id ? updatedBox : b)));
+    } catch (error) {
+      console.error("Failed to update box:", error);
+      throw error;
+    }
   };
 
   return (
@@ -253,7 +229,7 @@ export default function Dashboard({ user, onLogout, activityLog, addLog }) {
             className="w-full mx-auto bg-white rounded-3xl border border-emerald-100 shadow-sm p-5 md:p-6"
             style={{ maxWidth: "min(80rem, calc(100vw - 18rem))" }}
           >
-            {activeTab === TABS.DASHBOARD && (
+            {activeTab === TABS.DASHBOARD && !loading && (
               <DashboardHome activityLog={activityLog} boxes={boxes} />
             )}
             {activeTab === TABS.BOXES && (
@@ -273,31 +249,41 @@ export default function Dashboard({ user, onLogout, activityLog, addLog }) {
                 rowLabels={activeLocationProfile?.rowLabels}
               />
             )}
-            {activeTab === TABS.LOCATIONS && (
+            {activeTab === TABS.LOCATIONS && !loading && (
               <LocationManagement
                 profiles={locationProfiles}
                 activeProfileId={activeLocationProfileId}
-                onSetActiveProfileId={setActiveLocationProfileId}
-                onUpsertProfile={(profile) =>
-                  setLocationProfiles((prev) => {
-                    const idx = prev.findIndex((p) => p.id === profile.id);
-                    if (idx >= 0) {
-                      const next = [...prev];
-                      next[idx] = profile;
-                      return next;
-                    }
-                    return [profile, ...prev];
-                  })
-                }
-                onDeleteProfile={(id) =>
-                  setLocationProfiles((prev) => {
-                    const next = prev.filter((p) => p.id !== id);
+                onSetActiveProfileId={async (id) => {
+                  try {
+                    await locationProfilesAPI.setActive(id);
+                    setActiveLocationProfileId(id);
+                    await loadData(); // Reload to get updated profiles
+                  } catch (error) {
+                    console.error("Failed to set active profile:", error);
+                  }
+                }}
+                onUpsertProfile={async (profile) => {
+                  try {
+                    const savedProfile = await locationProfilesAPI.createOrUpdate(profile);
+                    await loadData(); // Reload to get updated profiles
+                  } catch (error) {
+                    console.error("Failed to save profile:", error);
+                    throw error;
+                  }
+                }}
+                onDeleteProfile={async (id) => {
+                  try {
+                    await locationProfilesAPI.delete(id);
+                    const next = locationProfiles.filter((p) => p.id !== id);
                     if (activeLocationProfileId === id && next.length) {
                       setActiveLocationProfileId(next[0].id);
                     }
-                    return next;
-                  })
-                }
+                    await loadData(); // Reload to get updated profiles
+                  } catch (error) {
+                    console.error("Failed to delete profile:", error);
+                    throw error;
+                  }
+                }}
               />
             )}
           </section>
@@ -363,12 +349,11 @@ function DashboardHome({ activityLog, boxes }) {
                     <p className="text-gray-800">
                       {typeof entry.details === "string"
                         ? entry.details
-                        : entry.details?.message ?? ""}
+                        : entry.details?.message ?? entry.details ?? ""}
                     </p>
-                      {typeof entry.details === "object" &&
-                      entry.details?.searchCode && (
+                      {(entry.searchCode || (typeof entry.details === "object" && entry.details?.searchCode)) && (
                         <p className="font-mono text-[11px] text-emerald-800 bg-gradient-to-r from-emerald-50 to-sky-50 border-2 border-emerald-200/50 rounded-lg px-3 py-1.5 mt-1 shadow-sm group-hover:shadow-md transition-all duration-300">
-                          {entry.details.searchCode}
+                          {entry.searchCode || entry.details?.searchCode}
                         </p>
                       )}
                   </li>

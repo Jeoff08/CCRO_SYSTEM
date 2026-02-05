@@ -51,33 +51,41 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog, shelfLet
   const [pendingBoxPayload, setPendingBoxPayload] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const handleSave = (payload) => {
+  const handleSave = async (payload) => {
     if (editingBox) {
-      onUpdate(payload);
-      if (addLog) {
-        addLog(
-          "box-edit",
-          `Box ${payload.boxNumber} updated (Bay ${payload.bay}, Shelf ${getShelfLetter(shelfMap, payload.bay, payload.shelf)}, Row ${payload.row}).`
-        );
+      try {
+        await onUpdate(payload);
+        if (addLog) {
+          addLog(
+            "box-edit",
+            `Box ${payload.boxNumber} updated (Bay ${payload.bay}, Shelf ${getShelfLetter(shelfMap, payload.bay, payload.shelf)}, Row ${payload.row}).`
+          );
+        }
+        setShowAddBoxModal(false);
+      } catch (error) {
+        console.error("Failed to update box:", error);
       }
-      setShowAddBoxModal(false);
     } else {
       setPendingBoxPayload(payload);
       setModalStep("confirm");
     }
   };
 
-  const handleConfirmAdd = () => {
+  const handleConfirmAdd = async () => {
     if (!pendingBoxPayload) return;
     const payload = { ...pendingBoxPayload, id: pendingBoxPayload.id || crypto.randomUUID() };
-    onAdd(payload);
-    if (addLog) {
-      addLog(
-        "box-add",
-        `Box ${payload.boxNumber} created (Bay ${payload.bay}, Shelf ${getShelfLetter(shelfMap, payload.bay, payload.shelf)}, Row ${payload.row}).`
-      );
+    try {
+      await onAdd(payload);
+      if (addLog) {
+        addLog(
+          "box-add",
+          `Box ${payload.boxNumber} created (Bay ${payload.bay}, Shelf ${getShelfLetter(shelfMap, payload.bay, payload.shelf)}, Row ${payload.row}).`
+        );
+      }
+      setModalStep("success");
+    } catch (error) {
+      console.error("Failed to create box:", error);
     }
-    setModalStep("success");
   };
 
   const startEdit = (box) => {
@@ -291,21 +299,27 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog, shelfLet
                         key={box.id}
                         className="border-b border-emerald-100/50 bg-white hover:bg-gradient-to-r hover:from-emerald-50/80 hover:to-sky-50/60 hover:shadow-sm transition-all duration-200 group cursor-pointer"
                       >
-                        <td className="px-4 py-3 text-gray-900 whitespace-nowrap font-semibold group-hover:text-emerald-700 transition-colors">{box.boxNumber}</td>
+                        <td className="px-4 py-3 text-gray-900 whitespace-nowrap font-semibold group-hover:text-emerald-700 transition-colors">{box.boxNumber != null && box.boxNumber !== "" ? box.boxNumber : "—"}</td>
                         <td className="px-4 py-3 text-gray-900 whitespace-nowrap font-medium group-hover:text-emerald-700 transition-colors">{box.bay}</td>
                         <td className="px-4 py-3 text-gray-900 whitespace-nowrap font-medium group-hover:text-emerald-700 transition-colors">{getShelfLetter(shelfMap, box.bay, box.shelf)}</td>
                         <td className="px-4 py-3 text-gray-900 whitespace-nowrap font-medium group-hover:text-emerald-700 transition-colors">{box.row}</td>
                         <td className="px-3 py-2 text-gray-900 whitespace-nowrap">
-                          {box.monthIndexTo != null && box.monthIndexTo !== box.monthIndex
-                            ? `${MONTHS[box.monthIndex]} – ${MONTHS[box.monthIndexTo]}`
-                            : MONTHS[box.monthIndex]}
+                          {box.monthIndex != null
+                            ? (box.monthIndexTo != null && box.monthIndexTo !== box.monthIndex
+                                ? `${MONTHS[box.monthIndex]} – ${MONTHS[box.monthIndexTo]}`
+                                : MONTHS[box.monthIndex])
+                            : "—"}
                         </td>
                         <td className="px-3 py-2 text-gray-900 whitespace-nowrap">
                           {box.yearTo != null ? `${box.year} – ${box.yearTo}` : box.year}
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap">
-                        <CertificateBadge type={box.certificateType} compact />
-                      </td>
+                          {box.certificateType ? (
+                            <CertificateBadge type={box.certificateType} compact />
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
                         <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{box.registryRange || "—"}</td>
                         <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{box.remark || "—"}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-center">
@@ -441,6 +455,44 @@ export function BoxForm({ editingBox, prefillPayload, onSaved, onCancel, existin
   const [remark, setRemark] = useState(source.remark || "");
   const [error, setError] = useState("");
 
+  // Update form fields when editingBox changes
+  useEffect(() => {
+    if (editingBox) {
+      setCertificateType(editingBox.certificateType || "");
+      setYear(editingBox.year !== undefined && editingBox.year !== null ? String(editingBox.year) : "");
+      setYearTo(editingBox.yearTo !== undefined && editingBox.yearTo !== null ? String(editingBox.yearTo) : "");
+      setMonthIndex(editingBox.monthIndex ?? null);
+      setMonthIndexTo(editingBox.monthIndexTo ?? null);
+      setBoxNumber(editingBox.boxNumber !== undefined && editingBox.boxNumber !== null ? String(editingBox.boxNumber) : "");
+      setBay(editingBox.bay !== undefined && editingBox.bay !== null ? String(editingBox.bay) : "");
+      const shelfLetterValue = editingBox.shelf !== undefined && editingBox.shelf !== null && editingBox.bay !== undefined && editingBox.bay !== null
+        ? getShelfLetter(shelfMap, editingBox.bay, editingBox.shelf)
+        : "";
+      setShelfLetter(shelfLetterValue);
+      setRow(editingBox.row !== undefined && editingBox.row !== null ? String(editingBox.row) : "");
+      setRegistryRange(editingBox.registryRange || "");
+      setRemark(editingBox.remark || "");
+      setError("");
+    } else if (prefillPayload) {
+      // Handle prefill payload (from confirmation step back to form)
+      setCertificateType(prefillPayload.certificateType || "");
+      setYear(prefillPayload.year !== undefined && prefillPayload.year !== null ? String(prefillPayload.year) : "");
+      setYearTo(prefillPayload.yearTo !== undefined && prefillPayload.yearTo !== null ? String(prefillPayload.yearTo) : "");
+      setMonthIndex(prefillPayload.monthIndex ?? null);
+      setMonthIndexTo(prefillPayload.monthIndexTo ?? null);
+      setBoxNumber(prefillPayload.boxNumber !== undefined && prefillPayload.boxNumber !== null ? String(prefillPayload.boxNumber) : "");
+      setBay(prefillPayload.bay !== undefined && prefillPayload.bay !== null ? String(prefillPayload.bay) : "");
+      const shelfLetterValue = prefillPayload.shelf !== undefined && prefillPayload.shelf !== null && prefillPayload.bay !== undefined && prefillPayload.bay !== null
+        ? getShelfLetter(shelfMap, prefillPayload.bay, prefillPayload.shelf)
+        : "";
+      setShelfLetter(shelfLetterValue);
+      setRow(prefillPayload.row !== undefined && prefillPayload.row !== null ? String(prefillPayload.row) : "");
+      setRegistryRange(prefillPayload.registryRange || "");
+      setRemark(prefillPayload.remark || "");
+      setError("");
+    }
+  }, [editingBox, prefillPayload, shelfMap]);
+
   useEffect(() => {
     if (!bay) {
       setShelfLetter("");
@@ -451,7 +503,7 @@ export function BoxForm({ editingBox, prefillPayload, onSaved, onCancel, existin
     if (!allowedShelves || (shelfLetter && !allowedShelves.includes(shelfLetter))) {
       setShelfLetter("");
     }
-  }, [bay, shelfLetter]);
+  }, [bay, shelfLetter, shelfMap]);
 
   const bayNumForShelves = Number(bay);
   const availableShelves =

@@ -115,7 +115,7 @@ export default function DocumentLocator({
       if (addLog) {
         addLog("search", {
           message: `Search (no match) for ${certificateType} - ${year} #${registryNumber}`,
-        });
+        }, null);
       }
       return;
     }
@@ -144,7 +144,7 @@ export default function DocumentLocator({
       addLog("search", {
         message: `Search for ${certificateType} - ${year} #${registryNumber}`,
         searchCode: registeredResult.searchCode,
-      });
+      }, registeredResult.searchCode);
     }
   };
 
