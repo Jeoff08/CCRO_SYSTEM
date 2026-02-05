@@ -354,7 +354,6 @@ export default function LocationManagement({
   const [addRowsInput, setAddRowsInput] = useState("");
   const [editingCell, setEditingCell] = useState(null); // { type: 'bay' | 'shelf' | 'row', bay?: number, shelfIndex?: number, rowKey?: number }
   const [editingValue, setEditingValue] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
     if (!selectedProfile) return;
@@ -363,15 +362,6 @@ export default function LocationManagement({
     setDraftRowLabels(selectedProfile.rowLabels || DEFAULT_ROW_LABELS);
     setFormError("");
   }, [selectedProfile]);
-
-  useEffect(() => {
-    if (successMessage) {
-      const timer = setTimeout(() => {
-        setSuccessMessage("");
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [successMessage]);
 
   const previewResult = null;
   const previewMatchingBox = null;
@@ -415,7 +405,6 @@ export default function LocationManagement({
       updatedAt: new Date().toISOString(),
     });
     setFormError("");
-    setSuccessMessage("Changes saved successfully!");
   };
 
   const handleDelete = () => {
@@ -453,7 +442,6 @@ export default function LocationManagement({
     setDraftShelvesByBay((prev) => ({ ...prev, [num]: [] }));
     setAddBayNumber("");
     setFormError("");
-    setSuccessMessage(`Bay ${num} added successfully!`);
     return true;
   };
 
@@ -476,7 +464,6 @@ export default function LocationManagement({
     setDraftShelvesByBay((prev) => ({ ...prev, [bay]: combined }));
     setAddShelfLetters("");
     setFormError("");
-    setSuccessMessage(`Shelf${letters.length > 1 ? 's' : ''} ${letters.join(', ')} added to Bay ${bay} successfully!`);
     return true;
   };
 
@@ -506,8 +493,6 @@ export default function LocationManagement({
     setDraftRowLabels(labels);
     setAddRowsInput("");
     setFormError("");
-    const normalizedLabels = parts.map((label) => /^R-.+$/.test(label) ? label : `R-${label}`);
-    setSuccessMessage(`Row${normalizedLabels.length > 1 ? 's' : ''} ${normalizedLabels.join(', ')} added successfully!`);
     return true;
   };
 
@@ -545,7 +530,6 @@ export default function LocationManagement({
 
     setDeleteBayNumber("");
     setFormError("");
-    setSuccessMessage(`Bay ${num} deleted successfully!`);
     return true;
   };
 
@@ -566,7 +550,6 @@ export default function LocationManagement({
     }));
     setDeleteShelfLabel("");
     setFormError("");
-    setSuccessMessage(`Shelf ${deleteShelfLabel} deleted from Bay ${bay} successfully!`);
     return true;
   };
 
@@ -581,7 +564,6 @@ export default function LocationManagement({
       setFormError("You must keep at least one row label.");
       return false;
     }
-    const labelToDelete = draftRowLabels[key];
     setDraftRowLabels((prev) => {
       const next = { ...prev };
       delete next[key];
@@ -589,7 +571,6 @@ export default function LocationManagement({
     });
     setDeleteRowKey("");
     setFormError("");
-    setSuccessMessage(`Row label ${labelToDelete} deleted successfully!`);
     return true;
   };
 
@@ -622,42 +603,23 @@ export default function LocationManagement({
 
   return (
     <div className="space-y-6">
-      {/* Success Toast Notification */}
-      {successMessage && (
-        <div className="fixed top-4 right-4 z-[100] animate-in slide-in-from-top-2 fade-in duration-300">
-          <div className="bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-lg border border-emerald-700 flex items-center gap-3 min-w-[280px] max-w-md">
-            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <p className="text-sm font-medium flex-1">{successMessage}</p>
-            <button
-              type="button"
-              onClick={() => setSuccessMessage("")}
-              className="p-1 rounded-lg hover:bg-emerald-700 transition-colors"
-              aria-label="Close"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Location Management</h2>
-          <p className="text-sm text-gray-600">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-2">
+        <div className="space-y-1">
+          <h2 className="text-xl font-bold text-gray-900 tracking-tight">Location Management</h2>
+          <p className="text-sm text-gray-600 leading-relaxed">
             Configure and manage location profiles to match your physical archive layout. Edit bays, shelves, and rows directly in the table below. The active profile determines how Document Locator maps certificates to physical storage locations.
           </p>
         </div>
       </div>
 
 
-        <div className="md:col-span-2 space-y-4">
-          <div className="border border-emerald-100 rounded-2xl bg-emerald-50/60 p-4 md:p-5">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
-              <h3 className="text-sm font-semibold text-gray-900">Location Management</h3>
+        <div className="md:col-span-2 space-y-5">
+          <div className="border-2 border-emerald-200/60 rounded-3xl bg-gradient-to-br from-white via-emerald-50/30 to-sky-50/20 p-5 md:p-6 shadow-lg shadow-emerald-100/50 hover:shadow-xl hover:shadow-emerald-200/50 transition-all duration-300">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+              <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50" />
+                Location Configuration
+              </h3>
             </div>
 
             {selectedProfile && (
@@ -666,22 +628,31 @@ export default function LocationManagement({
                   <button
                     type="button"
                     onClick={() => { setFormError(""); setAddBayNumber(""); setAddBayModalOpen(true); }}
-                    className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-5 py-2.5 text-xs font-bold text-white hover:from-emerald-700 hover:to-emerald-600 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 shadow-md shadow-emerald-500/30"
                   >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                    </svg>
                     Add bay
                   </button>
                   <button
                     type="button"
                     onClick={() => { setFormError(""); setAddShelfBay(bayNumbers.length ? String(bayNumbers[0]) : ""); setAddShelfLetters(""); setAddShelfModalOpen(true); }}
-                    className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-5 py-2.5 text-xs font-bold text-white hover:from-emerald-700 hover:to-emerald-600 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 shadow-md shadow-emerald-500/30"
                   >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                    </svg>
                     Add shelf
                   </button>
                   <button
                     type="button"
                     onClick={() => { const b = bayNumbers[0]; setFormError(""); setAddRowsBay(bayNumbers.length ? String(b) : ""); setAddRowsShelf((draftShelvesByBay[b] || [])[0] ?? ""); setAddRowsInput(""); setAddRowsModalOpen(true); }}
-                    className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-5 py-2.5 text-xs font-bold text-white hover:from-emerald-700 hover:to-emerald-600 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 shadow-md shadow-emerald-500/30"
                   >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                    </svg>
                     Add rows
                   </button>
                   <button
@@ -711,8 +682,11 @@ export default function LocationManagement({
                       handleSave();
                     }}
                     disabled={!selectedProfile}
-                    className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-sky-600 px-6 py-2.5 text-xs font-bold text-white hover:from-emerald-700 hover:to-sky-700 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-emerald-500/40"
                   >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    </svg>
                     Save Changes
                   </button>
                 </div> 
@@ -1047,8 +1021,8 @@ export default function LocationManagement({
             )}
 
             {addRowsModalOpen && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={closeModal} aria-modal="true" role="dialog">
-                <div className="bg-white rounded-2xl shadow-xl border border-emerald-100 p-5 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={closeModal} aria-modal="true" role="dialog">
+                <div className="bg-white rounded-3xl shadow-2xl border-2 border-emerald-200/50 p-6 w-full max-w-md animate-in zoom-in-95 slide-in-from-bottom-4 duration-300" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-sm font-semibold text-gray-900">Add rows</h3>
                     <button type="button" onClick={closeModal} className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700" aria-label="Close">
@@ -1112,10 +1086,13 @@ export default function LocationManagement({
             )}
           </div>
 
-          <div className="border border-emerald-100 rounded-2xl bg-emerald-50/60 p-4 md:p-5">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-900">Editable Block Layout</h3>
-              <p className="text-xs text-gray-600">Click on bay headers, shelf labels, or row labels to edit directly</p>
+          <div className="border-2 border-emerald-200/60 rounded-3xl bg-gradient-to-br from-white via-emerald-50/30 to-sky-50/20 p-5 md:p-6 shadow-lg shadow-emerald-100/50 hover:shadow-xl hover:shadow-emerald-200/50 transition-all duration-300">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-sky-500 shadow-sm shadow-sky-500/50" />
+                Editable Block Layout
+              </h3>
+              <p className="text-xs text-gray-600 bg-white/70 rounded-full px-3 py-1.5 border border-emerald-200/50 shadow-sm">✏️ Click to edit</p>
             </div>
             
             {selectedProfile && (
@@ -1132,11 +1109,12 @@ export default function LocationManagement({
                               <td className="w-6 p-0 border-none" aria-hidden />
                               <th
                                 colSpan={Math.max(1, Math.ceil((draftShelvesByBay[bay] || []).length / 2))}
-                                className="px-4 py-2 font-semibold text-emerald-800 border border-emerald-200 cursor-pointer hover:bg-emerald-200/50 transition"
+                                className="px-4 py-2 font-bold text-emerald-800 border-2 border-emerald-200/60 cursor-pointer hover:bg-gradient-to-r hover:from-emerald-100 hover:to-sky-100 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 group relative"
                                 onClick={() => {
                                   setEditingCell({ type: 'bay', bay });
                                   setEditingValue(`B-${bay}`);
                                 }}
+                                title="Click to edit bay number"
                               >
                                 {isEditing ? (
                                   <input
@@ -1167,7 +1145,7 @@ export default function LocationManagement({
                                         setEditingValue("");
                                       }
                                     }}
-                                    className="w-full text-center bg-white border border-emerald-400 rounded px-2 py-1"
+                                    className="w-full text-center bg-white border-2 border-emerald-500 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-500 shadow-md transition-all duration-200"
                                     autoFocus
                                   />
                                 ) : (
@@ -1201,13 +1179,18 @@ export default function LocationManagement({
                                       return (
                                         <td
                                           key={`${bay}-${blockIdx}-${idx}`}
-                                          className="px-4 py-2 font-medium text-gray-600 border border-emerald-200 text-left min-w-[3rem] whitespace-nowrap w-14 cursor-pointer hover:bg-emerald-100/50 transition"
+                                          className={`px-4 py-2 font-semibold text-gray-600 border-2 border-emerald-200/60 text-left min-w-[3rem] whitespace-nowrap w-14 transition-all duration-200 ${
+                                            lbl 
+                                              ? "cursor-pointer hover:bg-gradient-to-r hover:from-emerald-50 hover:to-sky-50 hover:shadow-md hover:border-emerald-300 hover:-translate-y-0.5 active:translate-y-0 group relative" 
+                                              : ""
+                                          }`}
                                           onClick={() => {
                                             if (lbl) {
                                               setEditingCell({ type: 'shelf', bay, shelfIndex: shelfIdx });
                                               setEditingValue(lbl);
                                             }
                                           }}
+                                          title={lbl ? "Click to edit shelf label" : ""}
                                         >
                                           {isEditing ? (
                                             <input
@@ -1246,7 +1229,7 @@ export default function LocationManagement({
                                                   setEditingValue("");
                                                 }
                                               }}
-                                              className="w-full bg-white border border-emerald-400 rounded px-2 py-1"
+                                              className="w-full bg-white border-2 border-emerald-500 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-500 shadow-md transition-all duration-200"
                                               autoFocus
                                             />
                                           ) : (
@@ -1269,12 +1252,13 @@ export default function LocationManagement({
                                 return (
                                   <tr key={`${blockIdx}-${row}`} className="border-b border-emerald-100">
                                     <td
-                                      className="px-4 py-2 font-medium text-gray-600 bg-emerald-50/50 border border-emerald-200 w-14 min-w-[3.5rem] shrink-0 whitespace-nowrap cursor-pointer hover:bg-emerald-100/50 transition"
+                                      className="px-4 py-2 font-semibold text-gray-600 bg-emerald-50/50 border-2 border-emerald-200/60 w-14 min-w-[3.5rem] shrink-0 whitespace-nowrap cursor-pointer hover:bg-gradient-to-r hover:from-emerald-100 hover:to-sky-100 hover:shadow-md hover:border-emerald-300 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 group relative"
                                       style={{ minWidth: "3.5rem" }}
                                       onClick={() => {
                                         setEditingCell({ type: 'row', rowKey: row });
                                         setEditingValue(draftRowLabels[row]);
                                       }}
+                                      title="Click to edit row label"
                                     >
                                       {isEditing ? (
                                         <input
@@ -1308,7 +1292,7 @@ export default function LocationManagement({
                                               setEditingValue("");
                                             }
                                           }}
-                                          className="w-full bg-white border border-emerald-400 rounded px-2 py-1"
+                                          className="w-full bg-white border-2 border-emerald-500 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-500 shadow-md transition-all duration-200"
                                           autoFocus
                                         />
                                       ) : (
