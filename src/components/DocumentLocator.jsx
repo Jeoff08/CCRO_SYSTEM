@@ -1,6 +1,4 @@
 import React, { useMemo, useState } from "react";
-import CertificateBadge from "./CertificateBadge.jsx";
-import { BoxForm } from "./BoxManagement.jsx";
 import { LocationResultLayout } from "./LocationManagement.jsx";
 
 const CERT_TYPES = [
@@ -71,7 +69,6 @@ export default function DocumentLocator({
   const [touched, setTouched] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
-  const [showAddBoxModal, setShowAddBoxModal] = useState(false);
   const [shelfDetailInfo, setShelfDetailInfo] = useState(null);
   const isYearEnabled = !!certificateType;
   const isRegistryEnabled = isYearEnabled && !!year;
@@ -173,69 +170,13 @@ export default function DocumentLocator({
 
   return (
     <div className="space-y-6">
-      {showAddBoxModal && onAddBox && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-          onClick={() => setShowAddBoxModal(false)}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="add-box-modal-title"
-        >
-          <div
-            className="bg-white rounded-2xl border border-emerald-100 shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-4 border-b border-emerald-100 flex items-center justify-between">
-              <h3 id="add-box-modal-title" className="text-sm font-semibold text-gray-900">
-                Add New Box
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowAddBoxModal(false)}
-                className="rounded-full p-1.5 text-gray-500 hover:bg-emerald-50 hover:text-gray-700"
-                aria-label="Close"
-              >
-                <span className="sr-only">Close</span>
-                <span aria-hidden>×</span>
-              </button>
-            </div>
-            <div className="p-4">
-              <BoxForm
-                editingBox={null}
-                onSaved={handleAddBoxFromModal}
-                onCancel={() => setShowAddBoxModal(false)}
-                existingBoxes={boxes}
-                shelfLettersByBay={shelfLettersByBay}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-2">
-        <div className="space-y-1">
-          <h2 className="text-xl font-bold text-gray-900 tracking-tight">
-            Document Locator
-          </h2>
-          <p className="text-sm text-gray-600 leading-relaxed">
-            Locate physical boxes using certificate type, year, and registry number.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {onAddBox && (
-            <button
-              type="button"
-              onClick={() => setShowAddBoxModal(true)}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-emerald-400 bg-white px-4 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-50 hover:border-emerald-500 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 shadow-sm"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-              </svg>
-              Add box
-            </button>
-          )}
-          <CertificateBadge type={certificateType || undefined} />
-        </div>
+      <div className="mb-2">
+        <h2 className="text-xl font-bold text-gray-900 tracking-tight">
+          Document Locator
+        </h2>
+        <p className="text-sm text-gray-600 leading-relaxed">
+          Locate physical boxes using certificate type, year, and registry number.
+        </p>
       </div>
 
       <form

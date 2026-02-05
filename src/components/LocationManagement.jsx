@@ -58,19 +58,19 @@ const ACCENT_STYLES = {
     highlightRing: "ring-emerald-400",
   },
   blue: {
-    highlightBg: "bg-sky-600",
-    highlightBorder: "border-sky-700",
-    highlightRing: "ring-sky-400",
+    highlightBg: "bg-blue-600",
+    highlightBorder: "border-blue-700",
+    highlightRing: "ring-blue-400",
   },
   rose: {
-    highlightBg: "bg-rose-600",
-    highlightBorder: "border-rose-700",
-    highlightRing: "ring-rose-400",
+    highlightBg: "bg-red-600",
+    highlightBorder: "border-red-700",
+    highlightRing: "ring-red-400",
   },
   violet: {
-    highlightBg: "bg-violet-600",
-    highlightBorder: "border-violet-700",
-    highlightRing: "ring-violet-400",
+    highlightBg: "bg-purple-600",
+    highlightBorder: "border-purple-700",
+    highlightRing: "ring-purple-400",
   },
 };
 

@@ -118,9 +118,9 @@ export default function LandingPage({ onStartArchiving }) {
                     Selected from a controlled drop‑down list.
                   </p>
                   <div className="space-y-1.5 text-[11px]">
-                    <div className="flex items-center justify-between rounded-md bg-sky-600/80 px-2 py-1.5">
+                    <div className="flex items-center justify-between rounded-md bg-blue-600/80 px-2 py-1.5">
                       <div className="flex items-center gap-2">
-                        <span className="h-3 w-3 rounded-full bg-sky-200" />
+                        <span className="h-3 w-3 rounded-full bg-blue-200" />
                         <span className="font-semibold">Birth (COLB)</span>
                       </div>
                       <span className="text-emerald-50/90">Blue</span>
@@ -132,12 +132,12 @@ export default function LandingPage({ onStartArchiving }) {
                       </div>
                       <span className="text-emerald-50/90">Red</span>
                     </div>
-                    <div className="flex items-center justify-between rounded-md bg-violet-600/80 px-2 py-1.5">
+                    <div className="flex items-center justify-between rounded-md bg-purple-600/80 px-2 py-1.5">
                       <div className="flex items-center gap-2">
-                        <span className="h-3 w-3 rounded-full bg-violet-200" />
+                        <span className="h-3 w-3 rounded-full bg-purple-200" />
                         <span className="font-semibold">Death (COD)</span>
                       </div>
-                      <span className="text-emerald-50/90">Violet</span>
+                      <span className="text-emerald-50/90">Purple</span>
                     </div>
                   </div>
                   <p className="text-[11px] text-emerald-100/80">

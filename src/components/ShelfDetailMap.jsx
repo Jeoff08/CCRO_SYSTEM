@@ -6,9 +6,9 @@ const COLS = 7;
 
 const ACCENT_CLASSES = {
   emerald: "bg-emerald-600 text-white border-emerald-700",
-  blue: "bg-sky-600 text-white border-sky-700",
-  rose: "bg-rose-600 text-white border-rose-700",
-  violet: "bg-violet-600 text-white border-violet-700",
+  blue: "bg-blue-600 text-white border-blue-700",
+  rose: "bg-red-600 text-white border-red-700",
+  violet: "bg-purple-600 text-white border-purple-700",
 };
 
 const CELL_SIZE = "4rem"; // uniform square cells
