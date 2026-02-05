@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function ActivityLog({ activityLog, onLogout }) {
+export default function ActivityLog({ activityLog, onLogout, onClearHistory }) {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -11,6 +11,16 @@ export default function ActivityLog({ activityLog, onLogout }) {
             and audits.
           </p>
         </div>
+        {activityLog.length > 0 && onClearHistory && (
+          <button
+            type="button"
+            onClick={onClearHistory}
+            className="px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-white border-2 border-emerald-200 rounded-lg hover:bg-emerald-50 hover:border-emerald-300 transition-all duration-200"
+            title="Clear all activity logs"
+          >
+            Clear History
+          </button>
+        )}
       </div>
 
       <div className="border border-emerald-100 rounded-2xl bg-emerald-50/60 p-4 md:p-5 max-h-[28rem] overflow-y-auto custom-scrollbar">

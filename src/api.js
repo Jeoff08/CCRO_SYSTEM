@@ -59,6 +59,8 @@ export const activityLogsAPI = {
     apiRequest("/activity-logs", { method: "POST", body: log }),
   getByUser: (userId, limit = 100) =>
     apiRequest(`/activity-logs/user/${userId}?limit=${limit}`),
+  clearAll: () =>
+    apiRequest("/activity-logs", { method: "DELETE" }),
 };
 
 // Auth API

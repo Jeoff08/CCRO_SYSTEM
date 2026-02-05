@@ -50,7 +50,7 @@ const SIDEBAR_ITEMS = [
   },
 ];
 
-export default function Dashboard({ user, onLogout, activityLog, addLog }) {
+export default function Dashboard({ user, onLogout, activityLog, addLog, clearHistory }) {
   const [activeTab, setActiveTab] = useState(TABS.DASHBOARD);
   const [boxes, setBoxes] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -230,7 +230,7 @@ export default function Dashboard({ user, onLogout, activityLog, addLog }) {
             style={{ maxWidth: "min(80rem, calc(100vw - 18rem))" }}
           >
             {activeTab === TABS.DASHBOARD && !loading && (
-              <DashboardHome activityLog={activityLog} boxes={boxes} />
+              <DashboardHome activityLog={activityLog} boxes={boxes} clearHistory={clearHistory} />
             )}
             {activeTab === TABS.BOXES && (
               <BoxManagement
@@ -293,7 +293,7 @@ export default function Dashboard({ user, onLogout, activityLog, addLog }) {
   );
 }
 
-function DashboardHome({ activityLog, boxes }) {
+function DashboardHome({ activityLog, boxes, clearHistory }) {
   const recentEvents = activityLog.slice(0, 10);
 
   return (
@@ -322,10 +322,22 @@ function DashboardHome({ activityLog, boxes }) {
             </div>
           </div>
           <div className="border-2 border-emerald-200/60 rounded-3xl bg-gradient-to-br from-white via-emerald-50/30 to-sky-50/20 p-5 md:p-6 max-h-[28rem] overflow-y-auto custom-scrollbar shadow-lg shadow-emerald-100/50 hover:shadow-xl hover:shadow-emerald-200/50 transition-all duration-300">
-            <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-sky-500 shadow-sm shadow-sky-500/50" />
-              Activity Log
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-sky-500 shadow-sm shadow-sky-500/50" />
+                Activity Log
+              </h3>
+              {activityLog.length > 0 && clearHistory && (
+                <button
+                  type="button"
+                  onClick={clearHistory}
+                  className="px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-white border-2 border-emerald-200 rounded-lg hover:bg-emerald-50 hover:border-emerald-300 transition-all duration-200"
+                  title="Clear all activity logs"
+                >
+                  Clear History
+                </button>
+              )}
+            </div>
             {activityLog.length === 0 ? (
               <p className="text-xs text-gray-500">
                 No activity recorded yet. Actions performed in the locator and box

@@ -70,6 +70,15 @@ export default function App() {
     setView(VIEWS.LOGIN);
   };
 
+  const clearHistory = async () => {
+    try {
+      await activityLogsAPI.clearAll();
+      setActivityLog([]);
+    } catch (error) {
+      console.error("Failed to clear activity logs:", error);
+    }
+  };
+
   if (view === VIEWS.LANDING) {
     return <LandingPage onStartArchiving={() => setView(VIEWS.LOGIN)} />;
   }
@@ -89,6 +98,7 @@ export default function App() {
       onLogout={handleLogout}
       activityLog={activityLog}
       addLog={addLog}
+      clearHistory={clearHistory}
     />
   );
 }

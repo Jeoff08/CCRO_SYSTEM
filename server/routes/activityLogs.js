@@ -104,5 +104,15 @@ router.get("/user/:userId", (req, res) => {
   }
 });
 
+// Clear all activity logs
+router.delete("/", (req, res) => {
+  try {
+    db.prepare("DELETE FROM activity_logs").run();
+    res.json({ message: "All activity logs cleared successfully" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
 
