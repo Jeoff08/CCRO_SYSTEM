@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import HighlightedSearchCode from "./HighlightedSearchCode.jsx";
+import ShelfDetailMap from "./ShelfDetailMap.jsx";
 
 export const DEFAULT_ROW_LABELS = { 1: "R-1", 2: "R-2", 3: "R-3", 4: "R-4", 5: "R-5", 6: "R-T" };
 export const DEFAULT_SHELF_LETTERS_BY_BAY = {
@@ -80,6 +82,10 @@ export function LocationResultLayout({
   title = "Location result",
   isPreview = false,
   accent = "emerald",
+  onBoxCellClick,
+  canEdit = false,
+  shelfDetailInfo,
+  onShelfDetailBack,
 }) {
   const matchCellRef = useRef(null);
 
@@ -146,7 +152,7 @@ export function LocationResultLayout({
 
   return (
     <div className="mt-2 border border-emerald-100 rounded-2xl p-4 md:p-5 bg-emerald-50/60 overflow-hidden">
-      <h3 className="text-sm font-semibold text-gray-900 mb-3">
+      <h3 className="text-[15px] font-semibold text-gray-900 mb-3">
         {title}
         {hasResult && !isPreview && headingSuffix}
       </h3>
@@ -154,19 +160,19 @@ export function LocationResultLayout({
       {hasResult && (
         <>
           <div className="mb-4 p-4 rounded-xl bg-white border-2 border-emerald-200">
-            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700 mb-2">
+            <p className="text-[13px] font-semibold uppercase tracking-wider text-emerald-700 mb-2">
               Where the document is located
             </p>
-            <p className="text-base font-semibold text-gray-900">
+            <p className="text-[17px] font-semibold text-gray-900">
               Bay {resultBay} → Shelf {shelfLabel} → Row {rowLabel} → Box #{resultBox}
             </p>
-            <p className="mt-2 text-sm text-gray-600">
+            <p className="mt-2 text-[15px] text-gray-600">
               Go to Bay {resultBay}, find Shelf {shelfLabel}, then Row {rowLabel}. The document is in Box #{resultBox}.
             </p>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm min-w-[max-content]">
+            <table className="w-full text-left text-[15px] min-w-[max-content]">
               <thead>
                 <tr className="border-b border-emerald-200 bg-emerald-50/70">
                   <th className="px-3 py-2 font-semibold text-gray-600 whitespace-nowrap">Document / file location</th>
@@ -178,7 +184,7 @@ export function LocationResultLayout({
                 </tr>
               </thead>
               <tbody>
-                <tr>
+                <tr className="text-[15px]">
                   <td className="px-3 py-2 text-gray-900 border-b border-emerald-50 font-medium">
                     {`Bay ${resultBay} → Shelf ${shelfLabel} → Row ${rowLabel} → Box #${resultBox}`}
                   </td>
@@ -194,8 +200,8 @@ export function LocationResultLayout({
                   <td className="px-3 py-2 text-gray-900 whitespace-nowrap border-b border-emerald-50">
                     {resultBox}
                   </td>
-                  <td className="px-3 py-2 text-gray-900 whitespace-nowrap border-b border-emerald-50 font-mono text-xs">
-                    {result.searchCode}
+                  <td className="px-3 py-2 text-gray-900 whitespace-nowrap border-b border-emerald-50 align-middle">
+                    <HighlightedSearchCode code={result.searchCode} />
                   </td>
                 </tr>
               </tbody>
@@ -204,14 +210,44 @@ export function LocationResultLayout({
         </>
       )}
 
-      <h4 className="text-xs font-semibold text-gray-700 mt-4 mb-2">
-        {hasResult
-          ? `Block layout — document located at Bay ${resultBay}, Shelf ${shelfLabel}, Row ${rowLabel}`
-          : "Block layout preview"}
-      </h4>
-      <div className="overflow-x-auto w-full">
-        <div className="border border-emerald-200 rounded-xl overflow-hidden inline-block min-w-full">
-          <table className="text-center text-sm border-collapse min-w-full">
+      {shelfDetailInfo ? (
+        <div className="mt-4">
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <h4 className="text-[13px] font-semibold text-gray-700">
+              Shelf detail — Bay {shelfDetailInfo.bay}, {shelfDetailInfo.shelfLabel}, Box #{shelfDetailInfo.boxNumber}
+            </h4>
+            <button
+              type="button"
+              onClick={onShelfDetailBack}
+              className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-white px-3 py-1.5 text-[13px] font-semibold text-emerald-800 hover:bg-emerald-50 transition-colors"
+            >
+              <span aria-hidden>←</span> Back to block layout
+            </button>
+          </div>
+          <p className="text-[13px] text-gray-600 mb-3">
+            Exact position: <span className="font-bold underline">Row {shelfDetailInfo.rowLabel}, Column {matchingBox?.shelfColumn ?? 1}</span>. (Click the highlighted box to return to block layout.)
+          </p>
+          <div className="flex justify-center">
+            <ShelfDetailMap
+              shelfLabel={shelfDetailInfo.shelfLabel}
+              resultRow={shelfDetailInfo.row}
+              resultShelfColumn={matchingBox?.shelfColumn ?? 1}
+              resultBoxNumber={shelfDetailInfo.boxNumber}
+              accent={accent}
+              onHighlightedCellClick={onShelfDetailBack}
+            />
+          </div>
+        </div>
+      ) : (
+        <>
+          <h4 className="text-[13px] font-semibold text-gray-700 mt-4 mb-2">
+            {hasResult
+              ? <>Block layout — document located at <span className="font-bold underline">Bay {resultBay}, Shelf {shelfLabel}, Row {rowLabel}</span>. (Click the highlighted box to show shelf detail.)</>
+              : "Block layout preview"}
+          </h4>
+          <div className="overflow-x-auto w-full">
+            <div className="border border-emerald-200 rounded-xl overflow-hidden inline-block min-w-full">
+              <table className="text-center text-[15px] border-collapse min-w-full">
             <thead>
               <tr className="bg-emerald-100/80 border-b border-emerald-200">
                 <th className="px-4 py-2 font-semibold text-emerald-800 border border-emerald-200 w-14 min-w-[3.5rem] shrink-0" style={{ minWidth: "3.5rem" }} />
@@ -271,18 +307,66 @@ export function LocationResultLayout({
                               const rowLbl = rowLabels[row] || `R-${row}`;
                               const cellLocation = `Bay ${bay}, Shelf ${shelfLbl}, Row ${rowLbl}`;
                               const isMatch = hasResult && resultBay === bay && resultShelf === shelf && resultRow === row;
+                              const isClickable = isMatch && (onBoxCellClick || canEdit);
                               return (
                                 <td
                                   key={ci}
                                   ref={isMatch ? matchCellRef : null}
-                                  className={`px-3 py-2 border-2 min-w-[3rem] ${
+                                  role={isClickable ? "button" : undefined}
+                                  tabIndex={isClickable ? 0 : undefined}
+                                  onClick={
+                                    isClickable
+                                      ? () =>
+                                          onBoxCellClick?.({
+                                            bay: resultBay,
+                                            shelf: resultShelf,
+                                            shelfLabel,
+                                            row: resultRow,
+                                            rowLabel,
+                                            boxNumber: resultBox,
+                                            shelfColumn: matchingBox?.shelfColumn ?? 1,
+                                          })
+                                      : undefined
+                                  }
+                                  onKeyDown={
+                                    isClickable
+                                      ? (e) => {
+                                          if (e.key === "Enter" || e.key === " ") {
+                                            e.preventDefault();
+                                            onBoxCellClick?.({
+                                              bay: resultBay,
+                                              shelf: resultShelf,
+                                              shelfLabel,
+                                              row: resultRow,
+                                              rowLabel,
+                                              boxNumber: resultBox,
+                                              shelfColumn: matchingBox?.shelfColumn ?? 1,
+                                            });
+                                          }
+                                        }
+                                      : undefined
+                                  }
+                                  className={`px-3 py-2 border-2 min-w-[3rem] box-border overflow-hidden ${
                                     isMatch
-                                      ? `${accentStyles.highlightBg} text-white font-semibold ${accentStyles.highlightBorder} ring-2 ${accentStyles.highlightRing} ring-offset-1`
+                                      ? `${accentStyles.highlightBg} text-white font-semibold ${accentStyles.highlightBorder}`
                                       : "border-emerald-200 bg-white text-gray-400"
-                                  }`}
-                                  title={isMatch ? `Document located here: ${cellLocation} — Box #${resultBox}` : cellLocation}
+                                  } ${isClickable ? "cursor-pointer hover:opacity-90" : ""}`}
+                                  title={
+                                    isMatch
+                                      ? isClickable
+                                        ? `Click to view shelf detail — Box #${resultBox}`
+                                        : `Document located here: ${cellLocation} — Box #${resultBox}`
+                                      : cellLocation
+                                  }
                                 >
-                                  {isMatch ? `Box# ${resultBox} ✓` : "—"}
+                                  {isMatch ? (
+                                    <span className="flex flex-col leading-tight text-[11px]">
+                                      <span>Box</span>
+                                      <span>#{resultBox}</span>
+                                    </span>
+                                  ) : (
+                                    "—"
+                                  )}
                                 </td>
                               );
                             })}
@@ -299,10 +383,12 @@ export function LocationResultLayout({
         </div>
       </div>
 
-      <p className="mt-3 text-[11px] text-gray-600">
-        Use this table to locate your document in physical storage. The highlighted cell shows Bay, Shelf, and Row. Hover any cell to see its location (e.g. Bay 1, Shelf S-B, Row R-3).
-        {hasResult && !isPreview && noteSuffix}
-      </p>
+          <p className="mt-3 text-[13px] text-gray-600">
+            Use this table to locate your document in physical storage.
+            {hasResult && !isPreview && noteSuffix}
+          </p>
+        </>
+      )}
     </div>
   );
 }

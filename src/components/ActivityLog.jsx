@@ -1,4 +1,5 @@
 import React from "react";
+import HighlightedSearchCode from "./HighlightedSearchCode.jsx";
 
 export default function ActivityLog({ activityLog, onLogout }) {
   return (
@@ -41,8 +42,8 @@ export default function ActivityLog({ activityLog, onLogout }) {
                   </p>
                   {typeof entry.details === "object" &&
                     entry.details.searchCode && (
-                      <p className="font-mono text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-lg px-2 py-1 mt-0.5">
-                        {entry.details.searchCode}
+                      <p className="text-sm mt-0.5">
+                        <HighlightedSearchCode code={entry.details.searchCode} />
                       </p>
                     )}
                 </li>

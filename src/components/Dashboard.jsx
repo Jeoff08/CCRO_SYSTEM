@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import DocumentLocator from "./DocumentLocator.jsx";
 import BoxManagement from "./BoxManagement.jsx";
+import HighlightedSearchCode from "./HighlightedSearchCode.jsx";
 import LocationManagement, { DEFAULT_ROW_LABELS, DEFAULT_SHELF_LETTERS_BY_BAY } from "./LocationManagement.jsx";
 
 const BOXES_STORAGE_KEY = "ccro-archive-boxes";
@@ -269,6 +270,8 @@ export default function Dashboard({ user, onLogout, activityLog, addLog }) {
               <DocumentLocator
                 boxes={boxes}
                 addLog={addLog}
+                onAddBox={handleAddBox}
+                onUpdateBox={handleUpdateBox}
                 shelfLettersByBay={activeLocationProfile?.shelfLettersByBay}
                 rowLabels={activeLocationProfile?.rowLabels}
               />
@@ -361,8 +364,8 @@ function DashboardHome({ activityLog, boxes }) {
                     </p>
                     {typeof entry.details === "object" &&
                       entry.details?.searchCode && (
-                        <p className="font-mono text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-lg px-2 py-1 mt-0.5">
-                          {entry.details.searchCode}
+                        <p className="text-sm mt-0.5">
+                          <HighlightedSearchCode code={entry.details.searchCode} />
                         </p>
                       )}
                   </li>

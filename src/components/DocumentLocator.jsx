@@ -60,6 +60,7 @@ export default function DocumentLocator({
   boxes,
   addLog,
   onAddBox,
+  onUpdateBox,
   shelfLettersByBay = DEFAULT_SHELF_LETTERS_BY_BAY,
   rowLabels = DEFAULT_ROW_LABELS,
 }) {
@@ -70,6 +71,7 @@ export default function DocumentLocator({
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [showAddBoxModal, setShowAddBoxModal] = useState(false);
+  const [shelfDetailInfo, setShelfDetailInfo] = useState(null);
   const isYearEnabled = !!certificateType;
   const isRegistryEnabled = isYearEnabled && !!year;
 
@@ -339,6 +341,9 @@ export default function DocumentLocator({
               ? "violet"
               : "emerald"
           }
+          onBoxCellClick={(info) => setShelfDetailInfo(info)}
+          shelfDetailInfo={shelfDetailInfo}
+          onShelfDetailBack={() => setShelfDetailInfo(null)}
         />
       )}
     </div>

@@ -341,6 +341,7 @@ function ConfirmBoxStep({ payload, onBack, onConfirm, shelfLettersByBay }) {
     { label: "Bay", value: payload.bay },
     { label: "Shelf", value: getShelfLetter(shelfLettersByBay || DEFAULT_SHELF_LETTERS_BY_BAY, payload.bay, payload.shelf) },
     { label: "Row / Level", value: payload.row },
+    { label: "Shelf column", value: payload.shelfColumn ?? 1 },
     { label: "Registry range", value: payload.registryRange || "—" },
     { label: "Remark", value: payload.remark || "—" },
   ];
@@ -430,6 +431,11 @@ export function BoxForm({ editingBox, prefillPayload, onSaved, onCancel, existin
       : "";
   const [shelfLetter, setShelfLetter] = useState(initialShelfLetter);
   const [row, setRow] = useState(source.row !== undefined && source.row !== null ? String(source.row) : "");
+  const [shelfColumn, setShelfColumn] = useState(
+    source.shelfColumn != null && source.shelfColumn >= 1 && source.shelfColumn <= 7
+      ? source.shelfColumn
+      : 1
+  );
   const [registryRange, setRegistryRange] = useState(source.registryRange || "");
   const [remark, setRemark] = useState(source.remark || "");
   const [error, setError] = useState("");
@@ -526,6 +532,7 @@ export function BoxForm({ editingBox, prefillPayload, onSaved, onCancel, existin
       bay: bayNum,
       shelf: shelfNum,
       row: rowNum,
+      shelfColumn,
       registryRange: registryRange.trim() || null,
       remark: remark.trim() || null,
     };
@@ -683,6 +690,20 @@ export function BoxForm({ editingBox, prefillPayload, onSaved, onCancel, existin
             onChange={(e) => setRow(e.target.value)}
             className="w-full rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
           />
+        </Field>
+
+        <Field label="Shelf Column (1–7)">
+          <select
+            value={shelfColumn}
+            onChange={(e) => setShelfColumn(Number(e.target.value))}
+            className="w-full rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+          >
+            {[1, 2, 3, 4, 5, 6, 7].map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
         </Field>
 
         <Field label="Registry Number Range">
