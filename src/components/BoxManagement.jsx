@@ -47,9 +47,10 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog, shelfLet
   const shelfMap = shelfLettersByBay || DEFAULT_SHELF_LETTERS_BY_BAY;
   const [editingBox, setEditingBox] = useState(null);
   const [showAddBoxModal, setShowAddBoxModal] = useState(false);
-  const [modalStep, setModalStep] = useState("form"); // 'form' | 'confirm' | 'success'
+  const [modalStep, setModalStep] = useState("form"); // 'form' | 'confirm'
   const [pendingBoxPayload, setPendingBoxPayload] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [successMessage, setSuccessMessage] = useState(null);
 
   const handleSave = async (payload) => {
     if (editingBox) {
@@ -62,6 +63,7 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog, shelfLet
           );
         }
         setShowAddBoxModal(false);
+        setSuccessMessage(`Box ${payload.boxNumber} updated successfully!`);
       } catch (error) {
         console.error("Failed to update box:", error);
       }
@@ -82,7 +84,8 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog, shelfLet
           `Box ${payload.boxNumber} created (Bay ${payload.bay}, Shelf ${getShelfLetter(shelfMap, payload.bay, payload.shelf)}, Row ${payload.row}).`
         );
       }
-      setModalStep("success");
+      setShowAddBoxModal(false);
+      setSuccessMessage(`Box ${payload.boxNumber} added successfully!`);
     } catch (error) {
       console.error("Failed to create box:", error);
     }
@@ -112,6 +115,15 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog, shelfLet
   const backToForm = () => {
     setModalStep("form");
   };
+
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => {
+        setSuccessMessage(null);
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
 
   const sortedBoxes = useMemo(
     () =>
@@ -158,6 +170,28 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog, shelfLet
 
   return (
     <div className="space-y-6">
+      {successMessage && (
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 fade-in duration-300">
+          <div className="bg-white rounded-xl border-2 border-emerald-400 shadow-2xl shadow-emerald-500/30 px-4 py-3 flex items-center gap-3 min-w-[280px] max-w-md">
+            <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+              <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <p className="text-sm font-semibold text-gray-900 flex-1">{successMessage}</p>
+            <button
+              type="button"
+              onClick={() => setSuccessMessage(null)}
+              className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+              aria-label="Close"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-2">
         <div className="space-y-1">
           <h2 className="text-xl font-bold text-gray-900 tracking-tight">
@@ -179,7 +213,6 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog, shelfLet
             </svg>
             Add box
           </button>
-          <CertificateBadge type={editingBox?.certificateType} />
         </div>
       </div>
 
@@ -198,7 +231,6 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog, shelfLet
             <div className="p-5 md:p-6 border-b border-emerald-100 flex items-center justify-between">
               <h3 id="add-box-modal-title" className="text-sm font-semibold text-gray-900">
                 {modalStep === "confirm" && "Confirm box details"}
-                {modalStep === "success" && "Box added"}
                 {modalStep === "form" && (editingBox ? "Edit Box" : "Add New Box")}
               </h3>
               <button
@@ -230,9 +262,6 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog, shelfLet
                   onConfirm={handleConfirmAdd}
                   shelfLettersByBay={shelfMap}
                 />
-              )}
-              {modalStep === "success" && (
-                <SuccessBoxOutput onDone={closeModal} />
               )}
             </div>
           </div>
@@ -410,27 +439,6 @@ function ConfirmBoxStep({ payload, onBack, onConfirm, shelfLettersByBay }) {
           Confirm and add box
         </button>
       </div>
-    </div>
-  );
-}
-
-function SuccessBoxOutput({ onDone }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-      <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
-        <svg className="w-7 h-7 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-        </svg>
-      </div>
-      <p className="text-base font-semibold text-gray-900 mb-1">Box added</p>
-      <p className="text-sm text-gray-500 mb-6">The box has been added successfully.</p>
-      <button
-        type="button"
-        onClick={onDone}
-        className="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-500/25 hover:bg-emerald-700 transition"
-      >
-        Done
-      </button>
     </div>
   );
 }
