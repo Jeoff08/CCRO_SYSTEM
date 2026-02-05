@@ -38,14 +38,13 @@ export default function ActivityLog({ activityLog, onLogout }) {
                   <p className="text-gray-800">
                     {typeof entry.details === "string"
                       ? entry.details
-                      : entry.details.message}
+                      : entry.details?.message || entry.details || ""}
                   </p>
-                  {typeof entry.details === "object" &&
-                    entry.details.searchCode && (
-                      <p className="text-sm mt-0.5">
-                        <HighlightedSearchCode code={entry.details.searchCode} />
-                      </p>
-                    )}
+                  {(entry.searchCode || (typeof entry.details === "object" && entry.details?.searchCode)) && (
+                    <p className="text-sm mt-0.5">
+                      <HighlightedSearchCode code={entry.searchCode || entry.details?.searchCode} />
+                    </p>
+                  )}
                 </li>
               ))}
             </ul>

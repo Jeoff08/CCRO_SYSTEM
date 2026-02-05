@@ -3,48 +3,7 @@ import DocumentLocator from "./DocumentLocator.jsx";
 import BoxManagement from "./BoxManagement.jsx";
 import HighlightedSearchCode from "./HighlightedSearchCode.jsx";
 import LocationManagement, { DEFAULT_ROW_LABELS, DEFAULT_SHELF_LETTERS_BY_BAY } from "./LocationManagement.jsx";
-
-const BOXES_STORAGE_KEY = "ccro-archive-boxes";
-const LOCATION_PROFILES_KEY = "ccro-location-profiles";
-const ACTIVE_LOCATION_PROFILE_KEY = "ccro-location-profile-active";
-
-function loadBoxesFromStorage() {
-  try {
-    const raw = localStorage.getItem(BOXES_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveBoxesToStorage(boxes) {
-  try {
-    localStorage.setItem(BOXES_STORAGE_KEY, JSON.stringify(boxes));
-  } catch {
-    // ignore
-  }
-}
-
-function loadLocationProfilesFromStorage() {
-  try {
-    const raw = localStorage.getItem(LOCATION_PROFILES_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-function loadActiveLocationProfileIdFromStorage() {
-  try {
-    return localStorage.getItem(ACTIVE_LOCATION_PROFILE_KEY) || "";
-  } catch {
-    return "";
-  }
-}
+import { boxesAPI, locationProfilesAPI } from "../api.js";
 
 const TABS = {
   DASHBOARD: "dashboard",
@@ -94,42 +53,47 @@ const SIDEBAR_ITEMS = [
 
 export default function Dashboard({ user, onLogout, activityLog, addLog }) {
   const [activeTab, setActiveTab] = useState(TABS.DASHBOARD);
-  const [boxes, setBoxes] = useState(() => loadBoxesFromStorage());
+  const [boxes, setBoxes] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [locationProfiles, setLocationProfiles] = useState(() => {
-    const loaded = loadLocationProfilesFromStorage();
-    if (loaded && loaded.length) return loaded;
-    return [
-      {
-        id: crypto.randomUUID(),
-        name: "Default mapping",
-        shelfLettersByBay: DEFAULT_SHELF_LETTERS_BY_BAY,
-        rowLabels: DEFAULT_ROW_LABELS,
-        updatedAt: new Date().toISOString(),
-      },
-    ];
-  });
-  const [activeLocationProfileId, setActiveLocationProfileId] = useState(() => loadActiveLocationProfileIdFromStorage());
+  const [locationProfiles, setLocationProfiles] = useState([]);
+  const [activeLocationProfileId, setActiveLocationProfileId] = useState("");
+  const [loading, setLoading] = useState(true);
 
+  // Load boxes and location profiles on mount
   useEffect(() => {
-    saveBoxesToStorage(boxes);
-  }, [boxes]);
+    loadData();
+  }, []);
 
-  useEffect(() => {
+  const loadData = async () => {
+    setLoading(true);
     try {
-      localStorage.setItem(LOCATION_PROFILES_KEY, JSON.stringify(locationProfiles));
-    } catch {
-      // ignore
-    }
-  }, [locationProfiles]);
+      const [boxesData, profilesData] = await Promise.all([
+        boxesAPI.getAll(),
+        locationProfilesAPI.getAll(),
+      ]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(ACTIVE_LOCATION_PROFILE_KEY, activeLocationProfileId || "");
-    } catch {
-      // ignore
+      setBoxes(boxesData);
+      setLocationProfiles(profilesData.length > 0 ? profilesData : [
+        {
+          id: crypto.randomUUID(),
+          name: "Default mapping",
+          shelfLettersByBay: DEFAULT_SHELF_LETTERS_BY_BAY,
+          rowLabels: DEFAULT_ROW_LABELS,
+          updatedAt: new Date().toISOString(),
+        },
+      ]);
+
+      // Set active profile
+      const activeProfile = profilesData.find((p) => p.isActive) || profilesData[0];
+      if (activeProfile) {
+        setActiveLocationProfileId(activeProfile.id);
+      }
+    } catch (error) {
+      console.error("Failed to load data:", error);
+    } finally {
+      setLoading(false);
     }
-  }, [activeLocationProfileId]);
+  };
 
   const activeLocationProfile =
     locationProfiles.find((p) => p.id === activeLocationProfileId) || locationProfiles[0];
@@ -140,12 +104,24 @@ export default function Dashboard({ user, onLogout, activityLog, addLog }) {
     }
   }, [activeLocationProfileId, locationProfiles]);
 
-  const handleAddBox = (box) => {
-    setBoxes((prev) => [...prev, box]);
+  const handleAddBox = async (box) => {
+    try {
+      const newBox = await boxesAPI.create(box);
+      setBoxes((prev) => [...prev, newBox]);
+    } catch (error) {
+      console.error("Failed to create box:", error);
+      throw error;
+    }
   };
 
-  const handleUpdateBox = (updated) => {
-    setBoxes((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
+  const handleUpdateBox = async (updated) => {
+    try {
+      const updatedBox = await boxesAPI.update(updated.id, updated);
+      setBoxes((prev) => prev.map((b) => (b.id === updated.id ? updatedBox : b)));
+    } catch (error) {
+      console.error("Failed to update box:", error);
+      throw error;
+    }
   };
 
   return (
@@ -254,7 +230,7 @@ export default function Dashboard({ user, onLogout, activityLog, addLog }) {
             className="w-full mx-auto bg-white rounded-3xl border border-emerald-100 shadow-sm p-5 md:p-6"
             style={{ maxWidth: "min(80rem, calc(100vw - 18rem))" }}
           >
-            {activeTab === TABS.DASHBOARD && (
+            {activeTab === TABS.DASHBOARD && !loading && (
               <DashboardHome activityLog={activityLog} boxes={boxes} />
             )}
             {activeTab === TABS.BOXES && (
@@ -276,31 +252,41 @@ export default function Dashboard({ user, onLogout, activityLog, addLog }) {
                 rowLabels={activeLocationProfile?.rowLabels}
               />
             )}
-            {activeTab === TABS.LOCATIONS && (
+            {activeTab === TABS.LOCATIONS && !loading && (
               <LocationManagement
                 profiles={locationProfiles}
                 activeProfileId={activeLocationProfileId}
-                onSetActiveProfileId={setActiveLocationProfileId}
-                onUpsertProfile={(profile) =>
-                  setLocationProfiles((prev) => {
-                    const idx = prev.findIndex((p) => p.id === profile.id);
-                    if (idx >= 0) {
-                      const next = [...prev];
-                      next[idx] = profile;
-                      return next;
-                    }
-                    return [profile, ...prev];
-                  })
-                }
-                onDeleteProfile={(id) =>
-                  setLocationProfiles((prev) => {
-                    const next = prev.filter((p) => p.id !== id);
+                onSetActiveProfileId={async (id) => {
+                  try {
+                    await locationProfilesAPI.setActive(id);
+                    setActiveLocationProfileId(id);
+                    await loadData(); // Reload to get updated profiles
+                  } catch (error) {
+                    console.error("Failed to set active profile:", error);
+                  }
+                }}
+                onUpsertProfile={async (profile) => {
+                  try {
+                    const savedProfile = await locationProfilesAPI.createOrUpdate(profile);
+                    await loadData(); // Reload to get updated profiles
+                  } catch (error) {
+                    console.error("Failed to save profile:", error);
+                    throw error;
+                  }
+                }}
+                onDeleteProfile={async (id) => {
+                  try {
+                    await locationProfilesAPI.delete(id);
+                    const next = locationProfiles.filter((p) => p.id !== id);
                     if (activeLocationProfileId === id && next.length) {
                       setActiveLocationProfileId(next[0].id);
                     }
-                    return next;
-                  })
-                }
+                    await loadData(); // Reload to get updated profiles
+                  } catch (error) {
+                    console.error("Failed to delete profile:", error);
+                    throw error;
+                  }
+                }}
               />
             )}
           </section>
@@ -315,10 +301,10 @@ function DashboardHome({ activityLog, boxes }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Dashboard</h2>
-          <p className="text-sm text-gray-600">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-2">
+        <div className="space-y-1">
+          <h2 className="text-xl font-bold text-gray-900 tracking-tight">Dashboard</h2>
+          <p className="text-sm text-gray-600 leading-relaxed">
             Recent events and activity across the archive system.
           </p>
         </div>
@@ -326,17 +312,23 @@ function DashboardHome({ activityLog, boxes }) {
 
       <div className="grid gap-4 md:grid-cols-1">
         <div className="space-y-4">
-          <div className="border border-emerald-100 rounded-2xl bg-emerald-50/60 p-4 md:p-5">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">Quick Stats</h3>
+          <div className="border-2 border-emerald-200/60 rounded-3xl bg-gradient-to-br from-white via-emerald-50/30 to-sky-50/20 p-5 md:p-6 shadow-lg shadow-emerald-100/50 hover:shadow-xl hover:shadow-emerald-200/50 transition-all duration-300">
+            <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50" />
+              Quick Stats
+            </h3>
             <div className="space-y-3">
-              <div className="bg-white border border-emerald-100 rounded-xl px-4 py-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700">Registered Boxes</p>
-                <p className="text-2xl font-bold text-gray-900">{boxes.length}</p>
+              <div className="bg-white border-2 border-emerald-200/50 rounded-2xl px-5 py-4 shadow-md hover:shadow-lg hover:border-emerald-300 transition-all duration-300 group">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-700 mb-2">Registered Boxes</p>
+                <p className="text-3xl font-bold bg-gradient-to-r from-emerald-700 to-sky-700 bg-clip-text text-transparent group-hover:scale-105 transition-transform duration-300">{boxes.length}</p>
               </div>
             </div>
           </div>
-          <div className="border border-emerald-100 rounded-2xl bg-emerald-50/60 p-4 md:p-5 max-h-[28rem] overflow-y-auto custom-scrollbar">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">Activity Log</h3>
+          <div className="border-2 border-emerald-200/60 rounded-3xl bg-gradient-to-br from-white via-emerald-50/30 to-sky-50/20 p-5 md:p-6 max-h-[28rem] overflow-y-auto custom-scrollbar shadow-lg shadow-emerald-100/50 hover:shadow-xl hover:shadow-emerald-200/50 transition-all duration-300">
+            <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-sky-500 shadow-sm shadow-sky-500/50" />
+              Activity Log
+            </h3>
             {activityLog.length === 0 ? (
               <p className="text-xs text-gray-500">
                 No activity recorded yet. Actions performed in the locator and box
@@ -347,7 +339,7 @@ function DashboardHome({ activityLog, boxes }) {
                 {activityLog.map((entry) => (
                   <li
                     key={entry.id}
-                    className="bg-white border border-emerald-100 rounded-xl px-3 py-2.5 flex flex-col gap-1"
+                    className="bg-white border-2 border-emerald-200/50 rounded-2xl px-4 py-3 flex flex-col gap-2 shadow-sm hover:shadow-lg hover:border-emerald-300 hover:-translate-y-0.5 transition-all duration-300 group"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
@@ -360,14 +352,13 @@ function DashboardHome({ activityLog, boxes }) {
                     <p className="text-gray-800">
                       {typeof entry.details === "string"
                         ? entry.details
-                        : entry.details?.message ?? ""}
+                        : entry.details?.message ?? entry.details ?? ""}
                     </p>
-                    {typeof entry.details === "object" &&
-                      entry.details?.searchCode && (
-                        <p className="text-sm mt-0.5">
-                          <HighlightedSearchCode code={entry.details.searchCode} />
-                        </p>
-                      )}
+                    {(entry.searchCode || (typeof entry.details === "object" && entry.details?.searchCode)) && (
+                      <p className="text-sm mt-0.5">
+                        <HighlightedSearchCode code={entry.searchCode || entry.details?.searchCode} />
+                      </p>
+                    )}
                   </li>
                 ))}
               </ul>

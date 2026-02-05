@@ -1,10 +1,5 @@
 import React, { useState } from "react";
-
-const DEMO_USER = {
-  username: "admin",
-  password: "ccro123",
-  role: "Records Officer",
-};
+import { authAPI } from "../api.js";
 
 export default function LoginForm({ onBack, onLoginSuccess }) {
   const [username, setUsername] = useState("");
@@ -12,22 +7,19 @@ export default function LoginForm({ onBack, onLoginSuccess }) {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      if (
-        username.trim() === DEMO_USER.username &&
-        password === DEMO_USER.password
-      ) {
-        onLoginSuccess({ username: DEMO_USER.username, role: DEMO_USER.role });
-      } else {
-        setError("Invalid credentials. Use admin / ccro123 for demo access.");
-      }
+    try {
+      const user = await authAPI.login(username.trim(), password);
+      onLoginSuccess(user);
+    } catch (err) {
+      setError(err.message || "Invalid credentials. Use admin / ccro123 for demo access.");
+    } finally {
       setIsSubmitting(false);
-    }, 400);
+    }
   };
 
   return (

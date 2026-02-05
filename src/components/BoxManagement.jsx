@@ -51,33 +51,41 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog, shelfLet
   const [pendingBoxPayload, setPendingBoxPayload] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const handleSave = (payload) => {
+  const handleSave = async (payload) => {
     if (editingBox) {
-      onUpdate(payload);
-      if (addLog) {
-        addLog(
-          "box-edit",
-          `Box ${payload.boxNumber} updated (Bay ${payload.bay}, Shelf ${getShelfLetter(shelfMap, payload.bay, payload.shelf)}, Row ${payload.row}).`
-        );
+      try {
+        await onUpdate(payload);
+        if (addLog) {
+          addLog(
+            "box-edit",
+            `Box ${payload.boxNumber} updated (Bay ${payload.bay}, Shelf ${getShelfLetter(shelfMap, payload.bay, payload.shelf)}, Row ${payload.row}).`
+          );
+        }
+        setShowAddBoxModal(false);
+      } catch (error) {
+        console.error("Failed to update box:", error);
       }
-      setShowAddBoxModal(false);
     } else {
       setPendingBoxPayload(payload);
       setModalStep("confirm");
     }
   };
 
-  const handleConfirmAdd = () => {
+  const handleConfirmAdd = async () => {
     if (!pendingBoxPayload) return;
     const payload = { ...pendingBoxPayload, id: pendingBoxPayload.id || crypto.randomUUID() };
-    onAdd(payload);
-    if (addLog) {
-      addLog(
-        "box-add",
-        `Box ${payload.boxNumber} created (Bay ${payload.bay}, Shelf ${getShelfLetter(shelfMap, payload.bay, payload.shelf)}, Row ${payload.row}).`
-      );
+    try {
+      await onAdd(payload);
+      if (addLog) {
+        addLog(
+          "box-add",
+          `Box ${payload.boxNumber} created (Bay ${payload.bay}, Shelf ${getShelfLetter(shelfMap, payload.bay, payload.shelf)}, Row ${payload.row}).`
+        );
+      }
+      setModalStep("success");
+    } catch (error) {
+      console.error("Failed to create box:", error);
     }
-    setModalStep("success");
   };
 
   const startEdit = (box) => {
@@ -150,12 +158,12 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog, shelfLet
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-2">
+        <div className="space-y-1">
+          <h2 className="text-xl font-bold text-gray-900 tracking-tight">
             Box Management
           </h2>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-600 leading-relaxed">
             Register and maintain box records to keep document locations
             synchronized with physical storage.
           </p>
@@ -164,8 +172,11 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog, shelfLet
           <button
             type="button"
             onClick={openAddModal}
-            className="inline-flex items-center justify-center rounded-full border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 transition"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-emerald-400 bg-white px-4 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-50 hover:border-emerald-500 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 shadow-sm"
           >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+            </svg>
             Add box
           </button>
           <CertificateBadge type={editingBox?.certificateType} />
@@ -174,14 +185,14 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog, shelfLet
 
       {showAddBoxModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={closeModal}
           role="dialog"
           aria-modal="true"
           aria-labelledby="add-box-modal-title"
         >
           <div
-            className="bg-white rounded-2xl border border-emerald-100 shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-3xl border-2 border-emerald-200/50 shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-in zoom-in-95 slide-in-from-bottom-4 duration-300"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-5 md:p-6 border-b border-emerald-100 flex items-center justify-between">
@@ -228,9 +239,10 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog, shelfLet
         </div>
       )}
 
-      <div className="border border-emerald-100 rounded-2xl p-4 bg-white-40/70 max-h-[28rem] overflow-hidden flex flex-col">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-            <h3 className="text-sm font-semibold text-gray-900">
+      <div className="border-2 border-emerald-200/60 rounded-3xl p-5 bg-gradient-to-br from-white via-emerald-50/30 to-sky-50/20 max-h-[28rem] overflow-hidden flex flex-col shadow-lg shadow-emerald-100/50 hover:shadow-xl hover:shadow-emerald-200/50 transition-all duration-300">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50" />
               Registered Boxes
             </h3>
             <div className="flex flex-wrap items-center gap-2">
@@ -239,13 +251,13 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog, shelfLet
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search boxes..."
-                className="rounded-xl border border-emerald-200 bg-white px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 min-w-[10rem]"
+                className="rounded-xl border-2 border-emerald-200/60 bg-white px-4 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-400 min-w-[10rem] shadow-sm hover:shadow-md transition-all duration-200"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery("")}
-                  className="inline-flex items-center justify-center rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-emerald-50"
+                  className="inline-flex items-center justify-center rounded-xl border-2 border-emerald-200/60 bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-emerald-50 hover:border-emerald-300 hover:shadow-md active:scale-95 transition-all duration-200"
                 >
                   Clear
                 </button>
@@ -285,23 +297,29 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog, shelfLet
                     {filteredBoxes.map((box) => (
                       <tr
                         key={box.id}
-                        className="border-b border-emerald-50 bg-white hover:bg-emerald-50/50"
+                        className="border-b border-emerald-100/50 bg-white hover:bg-gradient-to-r hover:from-emerald-50/80 hover:to-sky-50/60 hover:shadow-sm transition-all duration-200 group cursor-pointer"
                       >
-                        <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{box.boxNumber}</td>
-                        <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{box.bay}</td>
-                        <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{getShelfLetter(shelfMap, box.bay, box.shelf)}</td>
-                        <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{box.row}</td>
+                        <td className="px-4 py-3 text-gray-900 whitespace-nowrap font-semibold group-hover:text-emerald-700 transition-colors">{box.boxNumber != null && box.boxNumber !== "" ? box.boxNumber : "—"}</td>
+                        <td className="px-4 py-3 text-gray-900 whitespace-nowrap font-medium group-hover:text-emerald-700 transition-colors">{box.bay}</td>
+                        <td className="px-4 py-3 text-gray-900 whitespace-nowrap font-medium group-hover:text-emerald-700 transition-colors">{getShelfLetter(shelfMap, box.bay, box.shelf)}</td>
+                        <td className="px-4 py-3 text-gray-900 whitespace-nowrap font-medium group-hover:text-emerald-700 transition-colors">{box.row}</td>
                         <td className="px-3 py-2 text-gray-900 whitespace-nowrap">
-                          {box.monthIndexTo != null && box.monthIndexTo !== box.monthIndex
-                            ? `${MONTHS[box.monthIndex]} – ${MONTHS[box.monthIndexTo]}`
-                            : MONTHS[box.monthIndex]}
+                          {box.monthIndex != null
+                            ? (box.monthIndexTo != null && box.monthIndexTo !== box.monthIndex
+                                ? `${MONTHS[box.monthIndex]} – ${MONTHS[box.monthIndexTo]}`
+                                : MONTHS[box.monthIndex])
+                            : "—"}
                         </td>
                         <td className="px-3 py-2 text-gray-900 whitespace-nowrap">
                           {box.yearTo != null ? `${box.year} – ${box.yearTo}` : box.year}
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap">
-                        <CertificateBadge type={box.certificateType} compact />
-                      </td>
+                          {box.certificateType ? (
+                            <CertificateBadge type={box.certificateType} compact />
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
                         <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{box.registryRange || "—"}</td>
                         <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{box.remark || "—"}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-center">
@@ -311,8 +329,11 @@ export default function BoxManagement({ boxes, onAdd, onUpdate, addLog, shelfLet
                               e.stopPropagation();
                               startEdit(box);
                             }}
-                            className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-emerald-700"
+                            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-3 py-1.5 text-[11px] font-bold text-white hover:from-emerald-700 hover:to-emerald-600 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 shadow-md shadow-emerald-500/30"
                           >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
                             Update
                           </button>
                         </td>
@@ -440,6 +461,44 @@ export function BoxForm({ editingBox, prefillPayload, onSaved, onCancel, existin
   const [remark, setRemark] = useState(source.remark || "");
   const [error, setError] = useState("");
 
+  // Update form fields when editingBox changes
+  useEffect(() => {
+    if (editingBox) {
+      setCertificateType(editingBox.certificateType || "");
+      setYear(editingBox.year !== undefined && editingBox.year !== null ? String(editingBox.year) : "");
+      setYearTo(editingBox.yearTo !== undefined && editingBox.yearTo !== null ? String(editingBox.yearTo) : "");
+      setMonthIndex(editingBox.monthIndex ?? null);
+      setMonthIndexTo(editingBox.monthIndexTo ?? null);
+      setBoxNumber(editingBox.boxNumber !== undefined && editingBox.boxNumber !== null ? String(editingBox.boxNumber) : "");
+      setBay(editingBox.bay !== undefined && editingBox.bay !== null ? String(editingBox.bay) : "");
+      const shelfLetterValue = editingBox.shelf !== undefined && editingBox.shelf !== null && editingBox.bay !== undefined && editingBox.bay !== null
+        ? getShelfLetter(shelfMap, editingBox.bay, editingBox.shelf)
+        : "";
+      setShelfLetter(shelfLetterValue);
+      setRow(editingBox.row !== undefined && editingBox.row !== null ? String(editingBox.row) : "");
+      setRegistryRange(editingBox.registryRange || "");
+      setRemark(editingBox.remark || "");
+      setError("");
+    } else if (prefillPayload) {
+      // Handle prefill payload (from confirmation step back to form)
+      setCertificateType(prefillPayload.certificateType || "");
+      setYear(prefillPayload.year !== undefined && prefillPayload.year !== null ? String(prefillPayload.year) : "");
+      setYearTo(prefillPayload.yearTo !== undefined && prefillPayload.yearTo !== null ? String(prefillPayload.yearTo) : "");
+      setMonthIndex(prefillPayload.monthIndex ?? null);
+      setMonthIndexTo(prefillPayload.monthIndexTo ?? null);
+      setBoxNumber(prefillPayload.boxNumber !== undefined && prefillPayload.boxNumber !== null ? String(prefillPayload.boxNumber) : "");
+      setBay(prefillPayload.bay !== undefined && prefillPayload.bay !== null ? String(prefillPayload.bay) : "");
+      const shelfLetterValue = prefillPayload.shelf !== undefined && prefillPayload.shelf !== null && prefillPayload.bay !== undefined && prefillPayload.bay !== null
+        ? getShelfLetter(shelfMap, prefillPayload.bay, prefillPayload.shelf)
+        : "";
+      setShelfLetter(shelfLetterValue);
+      setRow(prefillPayload.row !== undefined && prefillPayload.row !== null ? String(prefillPayload.row) : "");
+      setRegistryRange(prefillPayload.registryRange || "");
+      setRemark(prefillPayload.remark || "");
+      setError("");
+    }
+  }, [editingBox, prefillPayload, shelfMap]);
+
   useEffect(() => {
     if (!bay) {
       setShelfLetter("");
@@ -450,7 +509,7 @@ export function BoxForm({ editingBox, prefillPayload, onSaved, onCancel, existin
     if (!allowedShelves || (shelfLetter && !allowedShelves.includes(shelfLetter))) {
       setShelfLetter("");
     }
-  }, [bay, shelfLetter]);
+  }, [bay, shelfLetter, shelfMap]);
 
   const bayNumForShelves = Number(bay);
   const availableShelves =
@@ -543,14 +602,15 @@ export function BoxForm({ editingBox, prefillPayload, onSaved, onCancel, existin
   return (
     <form
       onSubmit={handleSubmit}
-      className="border border-emerald-100 rounded-2xl p-5 md:p-6 bg-white space-y-4"
+      className="border-2 border-emerald-200/50 rounded-3xl p-6 md:p-7 bg-gradient-to-br from-white via-emerald-50/20 to-sky-50/10 space-y-5 shadow-xl shadow-emerald-100/30"
     >
-      <div className="flex items-center justify-between mb-1">
-        <div>
-          <h3 className="text-base font-semibold text-gray-900">
+      <div className="flex items-center justify-between mb-2">
+        <div className="space-y-1.5">
+          <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-500" />
             {editingBox ? "Edit Box" : "Add New Box"}
           </h3>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-600 leading-relaxed bg-white/60 rounded-lg px-3 py-2 border border-emerald-100/50">
             Required: type, year, Month From, box number, bay, shelf, row. You can select one or a range: e.g. January to February, 2025 to 2026. Year To and Month To are optional.
           </p>
         </div>
@@ -561,7 +621,7 @@ export function BoxForm({ editingBox, prefillPayload, onSaved, onCancel, existin
           <select
             value={certificateType}
             onChange={(e) => setCertificateType(e.target.value)}
-            className="w-full rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            className="w-full rounded-xl border-2 border-emerald-200/60 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-400 hover:border-emerald-300 transition-all duration-200 shadow-sm hover:shadow-md"
           >
             <option value="">Select type</option>
             {CERT_TYPES.map((c) => (
@@ -576,7 +636,7 @@ export function BoxForm({ editingBox, prefillPayload, onSaved, onCancel, existin
           <select
             value={year}
             onChange={(e) => setYear(e.target.value)}
-            className="w-full rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            className="w-full rounded-xl border-2 border-emerald-200/60 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-400 hover:border-emerald-300 transition-all duration-200 shadow-sm hover:shadow-md"
           >
             <option value="">Select year</option>
             {YEARS.map((y) => (
@@ -591,7 +651,7 @@ export function BoxForm({ editingBox, prefillPayload, onSaved, onCancel, existin
           <select
             value={yearTo}
             onChange={(e) => setYearTo(e.target.value)}
-            className="w-full rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            className="w-full rounded-xl border-2 border-emerald-200/60 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-400 hover:border-emerald-300 transition-all duration-200 shadow-sm hover:shadow-md"
           >
             <option value="">Same as From or leave empty (e.g. 2025 to 2026)</option>
             {YEARS.map((y) => (
@@ -610,7 +670,7 @@ export function BoxForm({ editingBox, prefillPayload, onSaved, onCancel, existin
                 e.target.value === "" ? null : Number(e.target.value)
               )
             }
-            className="w-full rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            className="w-full rounded-xl border-2 border-emerald-200/60 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-400 hover:border-emerald-300 transition-all duration-200 shadow-sm hover:shadow-md"
           >
             <option value="">Select month</option>
             {MONTHS.map((m, index) => (
@@ -629,7 +689,7 @@ export function BoxForm({ editingBox, prefillPayload, onSaved, onCancel, existin
                 e.target.value === "" ? null : Number(e.target.value)
               )
             }
-            className="w-full rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            className="w-full rounded-xl border-2 border-emerald-200/60 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-400 hover:border-emerald-300 transition-all duration-200 shadow-sm hover:shadow-md"
           >
             <option value="">Same or after From (e.g. January to February)</option>
             {MONTHS.map((m, index) => (
@@ -661,7 +721,7 @@ export function BoxForm({ editingBox, prefillPayload, onSaved, onCancel, existin
             max={6}
             value={bay}
             onChange={(e) => setBay(e.target.value)}
-            className="w-full rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            className="w-full rounded-xl border-2 border-emerald-200/60 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-400 hover:border-emerald-300 transition-all duration-200 shadow-sm hover:shadow-md"
           />
         </Field>
 
@@ -688,7 +748,7 @@ export function BoxForm({ editingBox, prefillPayload, onSaved, onCancel, existin
             max={6}
             value={row}
             onChange={(e) => setRow(e.target.value)}
-            className="w-full rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            className="w-full rounded-xl border-2 border-emerald-200/60 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-400 hover:border-emerald-300 transition-all duration-200 shadow-sm hover:shadow-md"
           />
         </Field>
 
@@ -739,21 +799,24 @@ export function BoxForm({ editingBox, prefillPayload, onSaved, onCancel, existin
           and row/level.
         </p>
         <div className="flex gap-2">
-          {editingBox && (
+            {editingBox && (
+              <button
+                type="button"
+                onClick={onCancel}
+                className="inline-flex items-center justify-center rounded-xl border-2 border-emerald-200/60 bg-white px-4 py-2 text-xs font-bold text-gray-700 hover:bg-emerald-50 hover:border-emerald-300 hover:shadow-md active:scale-95 transition-all duration-200"
+              >
+                Cancel
+              </button>
+            )}
             <button
-              type="button"
-              onClick={onCancel}
-              className="inline-flex items-center justify-center rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-emerald-50"
+              type="submit"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-sky-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-500/40 hover:from-emerald-700 hover:to-sky-700 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
             >
-              Cancel
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d={editingBox ? "M5 13l4 4L19 7" : "M12 4v16m8-8H4"} />
+              </svg>
+              {editingBox ? "Update" : "Add box"}
             </button>
-          )}
-          <button
-            type="submit"
-            className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white shadow shadow-emerald-500/30 hover:bg-emerald-700"
-          >
-            {editingBox ? "Update" : "Add box"}
-          </button>
         </div>
       </div>
     </form>
