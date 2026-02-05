@@ -339,7 +339,6 @@ export default function LocationManagement({
   const [addBayModalOpen, setAddBayModalOpen] = useState(false);
   const [addShelfModalOpen, setAddShelfModalOpen] = useState(false);
   const [addRowsModalOpen, setAddRowsModalOpen] = useState(false);
-  const [updateConfirmOpen, setUpdateConfirmOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteMode, setDeleteMode] = useState("bay"); // bay | shelf | row
@@ -353,6 +352,9 @@ export default function LocationManagement({
   const [addRowsBay, setAddRowsBay] = useState("");
   const [addRowsShelf, setAddRowsShelf] = useState("");
   const [addRowsInput, setAddRowsInput] = useState("");
+  const [editingCell, setEditingCell] = useState(null); // { type: 'bay' | 'shelf' | 'row', bay?: number, shelfIndex?: number, rowKey?: number }
+  const [editingValue, setEditingValue] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
     if (!selectedProfile) return;
@@ -361,6 +363,15 @@ export default function LocationManagement({
     setDraftRowLabels(selectedProfile.rowLabels || DEFAULT_ROW_LABELS);
     setFormError("");
   }, [selectedProfile]);
+
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => {
+        setSuccessMessage("");
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
 
   const previewResult = null;
   const previewMatchingBox = null;
@@ -404,6 +415,7 @@ export default function LocationManagement({
       updatedAt: new Date().toISOString(),
     });
     setFormError("");
+    setSuccessMessage("Changes saved successfully!");
   };
 
   const handleDelete = () => {
@@ -441,6 +453,7 @@ export default function LocationManagement({
     setDraftShelvesByBay((prev) => ({ ...prev, [num]: [] }));
     setAddBayNumber("");
     setFormError("");
+    setSuccessMessage(`Bay ${num} added successfully!`);
     return true;
   };
 
@@ -463,6 +476,7 @@ export default function LocationManagement({
     setDraftShelvesByBay((prev) => ({ ...prev, [bay]: combined }));
     setAddShelfLetters("");
     setFormError("");
+    setSuccessMessage(`Shelf${letters.length > 1 ? 's' : ''} ${letters.join(', ')} added to Bay ${bay} successfully!`);
     return true;
   };
 
@@ -492,6 +506,8 @@ export default function LocationManagement({
     setDraftRowLabels(labels);
     setAddRowsInput("");
     setFormError("");
+    const normalizedLabels = parts.map((label) => /^R-.+$/.test(label) ? label : `R-${label}`);
+    setSuccessMessage(`Row${normalizedLabels.length > 1 ? 's' : ''} ${normalizedLabels.join(', ')} added successfully!`);
     return true;
   };
 
@@ -499,7 +515,6 @@ export default function LocationManagement({
     setAddBayModalOpen(false);
     setAddShelfModalOpen(false);
     setAddRowsModalOpen(false);
-    setUpdateConfirmOpen(false);
     setDeleteModalOpen(false);
     setDeleteConfirmOpen(false);
     setFormError("");
@@ -530,6 +545,7 @@ export default function LocationManagement({
 
     setDeleteBayNumber("");
     setFormError("");
+    setSuccessMessage(`Bay ${num} deleted successfully!`);
     return true;
   };
 
@@ -550,6 +566,7 @@ export default function LocationManagement({
     }));
     setDeleteShelfLabel("");
     setFormError("");
+    setSuccessMessage(`Shelf ${deleteShelfLabel} deleted from Bay ${bay} successfully!`);
     return true;
   };
 
@@ -564,6 +581,7 @@ export default function LocationManagement({
       setFormError("You must keep at least one row label.");
       return false;
     }
+    const labelToDelete = draftRowLabels[key];
     setDraftRowLabels((prev) => {
       const next = { ...prev };
       delete next[key];
@@ -571,6 +589,7 @@ export default function LocationManagement({
     });
     setDeleteRowKey("");
     setFormError("");
+    setSuccessMessage(`Row label ${labelToDelete} deleted successfully!`);
     return true;
   };
 
@@ -603,11 +622,33 @@ export default function LocationManagement({
 
   return (
     <div className="space-y-6">
+      {/* Success Toast Notification */}
+      {successMessage && (
+        <div className="fixed top-4 right-4 z-[100] animate-in slide-in-from-top-2 fade-in duration-300">
+          <div className="bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-lg border border-emerald-700 flex items-center gap-3 min-w-[280px] max-w-md">
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <p className="text-sm font-medium flex-1">{successMessage}</p>
+            <button
+              type="button"
+              onClick={() => setSuccessMessage("")}
+              className="p-1 rounded-lg hover:bg-emerald-700 transition-colors"
+              aria-label="Close"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Location Management</h2>
           <p className="text-sm text-gray-600">
-            Create, update, and delete location profiles (shelf mapping). The active profile is used by Document Locator output.
+            Configure and manage location profiles to match your physical archive layout. Edit bays, shelves, and rows directly in the table below. The active profile determines how Document Locator maps certificates to physical storage locations.
           </p>
         </div>
       </div>
@@ -667,72 +708,17 @@ export default function LocationManagement({
                   <button
                     type="button"
                     onClick={() => {
-                      setFormError("");
-                      setUpdateConfirmOpen(true);
+                      handleSave();
                     }}
                     disabled={!selectedProfile}
-                    className="inline-flex items-center justify-center rounded-full border border-emerald-300 bg-white px-4 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 disabled:opacity-50"
+                    className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                   >
-                    Update
+                    Save Changes
                   </button>
                 </div> 
               </div>
             )}
 
-            {updateConfirmOpen && selectedProfile && (
-              <div
-                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-                onClick={() => setUpdateConfirmOpen(false)}
-                aria-modal="true"
-                role="dialog"
-                aria-labelledby="update-confirm-title"
-              >
-                <div
-                  className="bg-white rounded-2xl shadow-xl border border-emerald-100 p-5 w-full max-w-md"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 id="update-confirm-title" className="text-sm font-semibold text-gray-900">
-                      Confirm update
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={() => setUpdateConfirmOpen(false)}
-                      className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-                      aria-label="Close"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-
-                  <p className="text-sm text-gray-700">
-                    Save changes to <span className="font-semibold">{selectedProfile.name || "this profile"}</span>?
-                  </p>
-
-                  <div className="mt-4 flex gap-2 justify-end">
-                    <button
-                      type="button"
-                      onClick={() => setUpdateConfirmOpen(false)}
-                      className="inline-flex items-center justify-center rounded-full border border-emerald-200 bg-white px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-emerald-50"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleSave();
-                        setUpdateConfirmOpen(false);
-                      }}
-                      className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
-                    >
-                      Confirm
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {deleteModalOpen && selectedProfile && (
               <div
@@ -1127,15 +1113,240 @@ export default function LocationManagement({
           </div>
 
           <div className="border border-emerald-100 rounded-2xl bg-emerald-50/60 p-4 md:p-5">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">Layout Preview</h3>
-            <LocationResultLayout
-              result={previewResult}
-              matchingBox={previewMatchingBox}
-              shelfLettersByBay={selectedProfile ? (selectedProfile.id === selectedId ? draftShelvesByBay : selectedProfile.shelfLettersByBay) : DEFAULT_SHELF_LETTERS_BY_BAY}
-              rowLabels={selectedProfile && selectedProfile.id === selectedId ? draftRowLabels : (selectedProfile?.rowLabels || DEFAULT_ROW_LABELS)}
-              title="Document Locator output layout"
-              isPreview
-            />
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-900">Editable Block Layout</h3>
+              <p className="text-xs text-gray-600">Click on bay headers, shelf labels, or row labels to edit directly</p>
+            </div>
+            
+            {selectedProfile && (
+              <div className="overflow-x-auto w-full">
+                <div className="border border-emerald-200 rounded-xl overflow-hidden inline-block min-w-full">
+                  <table className="text-center text-sm border-collapse min-w-full">
+                    <thead>
+                      <tr className="bg-emerald-100/80 border-b border-emerald-200">
+                        <th className="px-4 py-2 font-semibold text-emerald-800 border border-emerald-200 w-14 min-w-[3.5rem] shrink-0" style={{ minWidth: "3.5rem" }} />
+                        {bayNumbers.map((bay) => {
+                          const isEditing = editingCell?.type === 'bay' && editingCell?.bay === bay;
+                          return (
+                            <React.Fragment key={bay}>
+                              <td className="w-6 p-0 border-none" aria-hidden />
+                              <th
+                                colSpan={Math.max(1, Math.ceil((draftShelvesByBay[bay] || []).length / 2))}
+                                className="px-4 py-2 font-semibold text-emerald-800 border border-emerald-200 cursor-pointer hover:bg-emerald-200/50 transition"
+                                onClick={() => {
+                                  setEditingCell({ type: 'bay', bay });
+                                  setEditingValue(`B-${bay}`);
+                                }}
+                              >
+                                {isEditing ? (
+                                  <input
+                                    type="text"
+                                    value={editingValue}
+                                    onChange={(e) => setEditingValue(e.target.value)}
+                                    onBlur={() => {
+                                      const match = editingValue.match(/^B?-?(\d+)$/);
+                                      if (match) {
+                                        const newBay = parseInt(match[1], 10);
+                                        if (newBay !== bay && !draftShelvesByBay[newBay]) {
+                                          setDraftShelvesByBay((prev) => {
+                                            const next = { ...prev };
+                                            next[newBay] = prev[bay] || [];
+                                            delete next[bay];
+                                            return next;
+                                          });
+                                        }
+                                      }
+                                      setEditingCell(null);
+                                      setEditingValue("");
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.target.blur();
+                                      } else if (e.key === 'Escape') {
+                                        setEditingCell(null);
+                                        setEditingValue("");
+                                      }
+                                    }}
+                                    className="w-full text-center bg-white border border-emerald-400 rounded px-2 py-1"
+                                    autoFocus
+                                  />
+                                ) : (
+                                  `B-${bay}`
+                                )}
+                              </th>
+                            </React.Fragment>
+                          );
+                        })}
+                        <td className="w-6 p-0 border-none" aria-hidden />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[0, 1].map((blockIdx) => {
+                        return (
+                          <React.Fragment key={blockIdx}>
+                            <tr className="border-b border-emerald-200">
+                              <td className="px-4 py-2 font-medium text-gray-700 bg-emerald-50/70 border border-emerald-200 w-14 min-w-[3.5rem] shrink-0" />
+                              {bayNumbers.map((bay) => {
+                                const shelves = draftShelvesByBay[bay] || [];
+                                const cols = Math.max(1, Math.ceil(shelves.length / 2));
+                                const startIdx = blockIdx * cols;
+                                const labels = shelves.slice(startIdx, startIdx + cols);
+                                const padded = [...labels, ...Array(Math.max(0, cols - labels.length)).fill(null)];
+                                return (
+                                  <React.Fragment key={bay}>
+                                    <td className="w-6 p-0 border-none" aria-hidden />
+                                    {padded.map((lbl, idx) => {
+                                      const shelfIdx = startIdx + idx;
+                                      const isEditing = editingCell?.type === 'shelf' && editingCell?.bay === bay && editingCell?.shelfIndex === shelfIdx;
+                                      return (
+                                        <td
+                                          key={`${bay}-${blockIdx}-${idx}`}
+                                          className="px-4 py-2 font-medium text-gray-600 border border-emerald-200 text-left min-w-[3rem] whitespace-nowrap w-14 cursor-pointer hover:bg-emerald-100/50 transition"
+                                          onClick={() => {
+                                            if (lbl) {
+                                              setEditingCell({ type: 'shelf', bay, shelfIndex: shelfIdx });
+                                              setEditingValue(lbl);
+                                            }
+                                          }}
+                                        >
+                                          {isEditing ? (
+                                            <input
+                                              type="text"
+                                              value={editingValue}
+                                              onChange={(e) => {
+                                                const val = e.target.value.toUpperCase().trim();
+                                                if (val.startsWith('S-')) {
+                                                  setEditingValue(val);
+                                                } else if (val) {
+                                                  setEditingValue(`S-${val}`);
+                                                } else {
+                                                  setEditingValue(val);
+                                                }
+                                              }}
+                                              onBlur={() => {
+                                                if (editingValue && /^S-[A-Z]$/.test(editingValue)) {
+                                                  setDraftShelvesByBay((prev) => {
+                                                    const next = { ...prev };
+                                                    const shelves = [...(next[bay] || [])];
+                                                    if (shelves[shelfIdx] !== undefined) {
+                                                      shelves[shelfIdx] = editingValue;
+                                                      next[bay] = shelves;
+                                                    }
+                                                    return next;
+                                                  });
+                                                }
+                                                setEditingCell(null);
+                                                setEditingValue("");
+                                              }}
+                                              onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                  e.target.blur();
+                                                } else if (e.key === 'Escape') {
+                                                  setEditingCell(null);
+                                                  setEditingValue("");
+                                                }
+                                              }}
+                                              className="w-full bg-white border border-emerald-400 rounded px-2 py-1"
+                                              autoFocus
+                                            />
+                                          ) : (
+                                            lbl ?? ""
+                                          )}
+                                        </td>
+                                      );
+                                    })}
+                                  </React.Fragment>
+                                );
+                              })}
+                              <td className="w-6 p-0 border-none" aria-hidden />
+                            </tr>
+                            {Object.keys(draftRowLabels)
+                              .map(Number)
+                              .filter((k) => !Number.isNaN(k))
+                              .sort((a, b) => b - a)
+                              .map((row) => {
+                                const isEditing = editingCell?.type === 'row' && editingCell?.rowKey === row;
+                                return (
+                                  <tr key={`${blockIdx}-${row}`} className="border-b border-emerald-100">
+                                    <td
+                                      className="px-4 py-2 font-medium text-gray-600 bg-emerald-50/50 border border-emerald-200 w-14 min-w-[3.5rem] shrink-0 whitespace-nowrap cursor-pointer hover:bg-emerald-100/50 transition"
+                                      style={{ minWidth: "3.5rem" }}
+                                      onClick={() => {
+                                        setEditingCell({ type: 'row', rowKey: row });
+                                        setEditingValue(draftRowLabels[row]);
+                                      }}
+                                    >
+                                      {isEditing ? (
+                                        <input
+                                          type="text"
+                                          value={editingValue}
+                                          onChange={(e) => {
+                                            const val = e.target.value.toUpperCase().trim();
+                                            if (val.startsWith('R-')) {
+                                              setEditingValue(val);
+                                            } else if (val) {
+                                              setEditingValue(`R-${val}`);
+                                            } else {
+                                              setEditingValue(val);
+                                            }
+                                          }}
+                                          onBlur={() => {
+                                            if (editingValue && /^R-.+$/.test(editingValue)) {
+                                              setDraftRowLabels((prev) => ({
+                                                ...prev,
+                                                [row]: editingValue,
+                                              }));
+                                            }
+                                            setEditingCell(null);
+                                            setEditingValue("");
+                                          }}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                              e.target.blur();
+                                            } else if (e.key === 'Escape') {
+                                              setEditingCell(null);
+                                              setEditingValue("");
+                                            }
+                                          }}
+                                          className="w-full bg-white border border-emerald-400 rounded px-2 py-1"
+                                          autoFocus
+                                        />
+                                      ) : (
+                                        draftRowLabels[row]
+                                      )}
+                                    </td>
+                                    {bayNumbers.map((bay) => {
+                                      const cols = Math.max(1, Math.ceil((draftShelvesByBay[bay] || []).length / 2));
+                                      return (
+                                        <React.Fragment key={bay}>
+                                          <td className="w-6 p-0 border-none" aria-hidden />
+                                          {Array.from({ length: cols }, (_, ci) => (
+                                            <td
+                                              key={ci}
+                                              className="px-3 py-2 border-2 min-w-[3rem] border-emerald-200 bg-white text-gray-400"
+                                            >
+                                              —
+                                            </td>
+                                          ))}
+                                        </React.Fragment>
+                                      );
+                                    })}
+                                    <td className="w-6 p-0 border-none" aria-hidden />
+                                  </tr>
+                                );
+                              })}
+                          </React.Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            
+            <p className="mt-3 text-[11px] text-gray-600">
+              Click on any bay header (B-1, B-2, etc.), shelf label (S-A, S-B, etc.), or row label (R-1, R-2, etc.) to edit directly. Changes are saved to draft. Click "Save Changes" to update the profile.
+            </p>
           </div>
         </div>
       </div>
