@@ -354,6 +354,7 @@ export default function LocationManagement({
   const [addRowsInput, setAddRowsInput] = useState("");
   const [editingCell, setEditingCell] = useState(null); // { type: 'bay' | 'shelf' | 'row', bay?: number, shelfIndex?: number, rowKey?: number }
   const [editingValue, setEditingValue] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
     if (!selectedProfile) return;
@@ -362,6 +363,19 @@ export default function LocationManagement({
     setDraftRowLabels(selectedProfile.rowLabels || DEFAULT_ROW_LABELS);
     setFormError("");
   }, [selectedProfile]);
+
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => {
+        setSuccessMessage("");
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
+
+  const showSuccess = (message) => {
+    setSuccessMessage(message);
+  };
 
   const previewResult = null;
   const previewMatchingBox = null;
@@ -405,6 +419,7 @@ export default function LocationManagement({
       updatedAt: new Date().toISOString(),
     });
     setFormError("");
+    showSuccess("Changes saved successfully!");
   };
 
   const handleDelete = () => {
@@ -442,6 +457,7 @@ export default function LocationManagement({
     setDraftShelvesByBay((prev) => ({ ...prev, [num]: [] }));
     setAddBayNumber("");
     setFormError("");
+    showSuccess(`Bay B-${num} added successfully!`);
     return true;
   };
 
@@ -464,6 +480,7 @@ export default function LocationManagement({
     setDraftShelvesByBay((prev) => ({ ...prev, [bay]: combined }));
     setAddShelfLetters("");
     setFormError("");
+    showSuccess(`Shelf${letters.length > 1 ? 's' : ''} ${letters.join(', ')} added to Bay B-${bay} successfully!`);
     return true;
   };
 
@@ -486,13 +503,16 @@ export default function LocationManagement({
     const existingIndices = Object.keys(draftRowLabels).map(Number).filter((k) => !Number.isNaN(k));
     const maxIndex = existingIndices.length ? Math.max(...existingIndices) : 0;
     const labels = { ...draftRowLabels };
+    const normalizedLabels = [];
     parts.forEach((label, i) => {
       const normalized = /^R-.+$/.test(label) ? label : `R-${label}`;
       labels[maxIndex + 1 + i] = normalized;
+      normalizedLabels.push(normalized);
     });
     setDraftRowLabels(labels);
     setAddRowsInput("");
     setFormError("");
+    showSuccess(`Row${normalizedLabels.length > 1 ? 's' : ''} ${normalizedLabels.join(', ')} added successfully!`);
     return true;
   };
 
@@ -575,11 +595,31 @@ export default function LocationManagement({
   };
 
   const handleDeleteSubmit = () => {
-    if (deleteMode === "bay") return handleDeleteBay();
-    if (deleteMode === "shelf") return handleDeleteShelf();
-    if (deleteMode === "row") return handleDeleteRow();
-    setFormError("Select what to delete.");
-    return false;
+    let result = false;
+    if (deleteMode === "bay") {
+      result = handleDeleteBay();
+      if (result) {
+        const bay = deleteBayNumber?.trim();
+        showSuccess(bay ? `Bay B-${bay} deleted successfully!` : "Bay deleted successfully!");
+      }
+    } else if (deleteMode === "shelf") {
+      result = handleDeleteShelf();
+      if (result) {
+        const shelf = deleteShelfLabel?.trim();
+        showSuccess(shelf ? `Shelf ${shelf} deleted successfully!` : "Shelf deleted successfully!");
+      }
+    } else if (deleteMode === "row") {
+      result = handleDeleteRow();
+      if (result) {
+        const key = deleteRowKey === "" ? null : parseInt(deleteRowKey, 10);
+        const label = key != null && !Number.isNaN(key) ? draftRowLabels?.[key] : "";
+        showSuccess(label ? `Row ${label} deleted successfully!` : "Row deleted successfully!");
+      }
+    } else {
+      setFormError("Select what to delete.");
+      return false;
+    }
+    return result;
   };
 
   const deleteSummary = useMemo(() => {
@@ -602,6 +642,7 @@ export default function LocationManagement({
   }, [deleteMode, deleteBayNumber, deleteShelfBay, deleteShelfLabel, deleteRowKey, draftRowLabels]);
 
   return (
+    <>
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-2">
         <div className="space-y-1">
@@ -1334,5 +1375,29 @@ export default function LocationManagement({
           </div>
         </div>
       </div>
+
+      {successMessage && (
+        <div className="fixed top-4 right-4 z-[100] animate-in slide-in-from-top-2 fade-in duration-300">
+          <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl shadow-2xl border-2 border-emerald-400/50 px-5 py-4 min-w-[280px] max-w-md flex items-center gap-3">
+            <div className="flex-shrink-0">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <p className="flex-1 text-sm font-semibold">{successMessage}</p>
+            <button
+              type="button"
+              onClick={() => setSuccessMessage("")}
+              className="flex-shrink-0 p-1 rounded-lg hover:bg-emerald-700/50 transition-colors"
+              aria-label="Close"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
