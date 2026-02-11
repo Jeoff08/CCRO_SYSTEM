@@ -6,7 +6,9 @@ import { randomUUID } from "crypto";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const dbPath = join(__dirname, "..", "ccro-archive.db");
+// In packaged Electron, CCRO_DB_PATH points to a writable userData location.
+// In development, falls back to the project root.
+const dbPath = process.env.CCRO_DB_PATH || join(__dirname, "..", "ccro-archive.db");
 const db = new Database(dbPath);
 
 // Enable foreign keys

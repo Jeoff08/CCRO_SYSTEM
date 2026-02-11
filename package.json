@@ -1,14 +1,20 @@
 {
   "name": "ccro-archive-locator-system",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "main": "electron/main.cjs",
+  "author": "CCRO Iligan",
+  "description": "City Civil Registrar's Office - Archive Locator System",
   "scripts": {
     "dev": "vite",
     "dev:server": "node server/index.js",
     "dev:all": "concurrently \"npm run dev\" \"npm run dev:server\"",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
+    "electron:dev": "node electron/dev-runner.cjs",
+    "build": "vite build",
+    "electron:build": "node scripts/convert-icon.cjs && vite build && electron-builder --win",
+    "preview": "vite preview",
+    "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -25,7 +31,41 @@
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8",
+    "png-to-ico": "^3.0.1",
+    "sharp": "^0.34.5",
     "typescript": "~5.9.3",
     "vite": "^7.2.4"
+  },
+  "build": {
+    "appId": "com.ccro.archive-locator-system",
+    "productName": "CCRO Archive Locator System",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "server/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "**/node_modules/better-sqlite3/**"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
+    }
   }
 }

@@ -29,7 +29,7 @@ export default function LoginForm({ onBack, onLoginSuccess }) {
           <div className="min-h-full flex flex-col items-center justify-center text-center gap-3">
             <div className="flex h-[350px] w-[350px] items-center justify-center overflow-hidden rounded-full bg-white/10">
                 <img
-                  src="/461661670_1118300596319054_8742723372426556351_n.jpg"
+                  src={`${import.meta.env.BASE_URL}461661670_1118300596319054_8742723372426556351_n.jpg`}
                   alt="City Civil Registrar Office Logo"
                   className="h-full w-full object-cover"
                 />
