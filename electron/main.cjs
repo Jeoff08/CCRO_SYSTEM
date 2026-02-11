@@ -1,81 +1,100 @@
+/**
+ * Electron main process.
+ * – Starts the Express API server as a child process
+ * – Creates the BrowserWindow with the CCRO icon
+ * – In dev mode loads from Vite; in production loads dist/index.html
+ */
 const { app, BrowserWindow } = require("electron");
 const path = require("path");
-const { pathToFileURL } = require("url");
+const { fork } = require("child_process");
 
 const isDev = !app.isPackaged;
 
 let mainWindow;
+let serverProcess;
 
-// Prevent multiple instances
-const gotLock = app.requestSingleInstanceLock();
-if (!gotLock) {
-  app.quit();
-} else {
-  app.on("second-instance", () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
-    }
+/* ───── Express API server ───── */
+function startServer() {
+  const dbPath = isDev
+    ? path.join(__dirname, "..", "ccro-archive.db")
+    : path.join(app.getPath("userData"), "ccro-archive.db");
+
+  const serverPath = isDev
+    ? path.join(__dirname, "..", "server", "index.js")
+    : path.join(process.resourcesPath, "app.asar", "server", "index.js");
+
+  serverProcess = fork(serverPath, [], {
+    env: {
+      ...process.env,
+      CCRO_DB_PATH: dbPath,
+      PORT: "3001",
+    },
+    // Silence stdout/stderr from the child in production
+    silent: !isDev,
   });
 
-  function createWindow() {
-    mainWindow = new BrowserWindow({
-      width: 1280,
-      height: 800,
-      minWidth: 900,
-      minHeight: 600,
-      title: "CCRO Archive Locator System",
-      icon: isDev
-        ? path.join(__dirname, "..", "public", "461661670_1118300596319054_8742723372426556351_n.jpg")
-        : path.join(__dirname, "..", "dist", "461661670_1118300596319054_8742723372426556351_n.jpg"),
-      webPreferences: {
-        preload: path.join(__dirname, "preload.cjs"),
-        nodeIntegration: false,
-        contextIsolation: true,
-      },
-      autoHideMenuBar: true,
-    });
-
-    if (isDev) {
-      mainWindow.loadURL("http://localhost:5173");
-    } else {
-      mainWindow.loadFile(path.join(__dirname, "..", "dist", "index.html"));
-    }
-
-    mainWindow.on("closed", () => {
-      mainWindow = null;
-    });
-  }
-
-  app.whenReady().then(async () => {
-    // Set DB path for production (userData is writable, unlike app.asar)
-    if (!isDev) {
-      process.env.CCRO_DB_PATH = path.join(
-        app.getPath("userData"),
-        "ccro-archive.db"
-      );
-    }
-
-    // Start the Express API server (dynamic import for ESM module)
-    try {
-      const serverPath = path.join(__dirname, "..", "server", "index.js");
-      await import(pathToFileURL(serverPath).href);
-    } catch (err) {
-      console.error("Failed to start Express server:", err);
-    }
-
-    createWindow();
-
-    app.on("activate", () => {
-      if (BrowserWindow.getAllWindows().length === 0) {
-        createWindow();
-      }
-    });
-  });
-
-  app.on("window-all-closed", () => {
-    if (process.platform !== "darwin") {
-      app.quit();
-    }
+  serverProcess.on("error", (err) => {
+    console.error("Server process error:", err);
   });
 }
+
+/* ───── BrowserWindow ───── */
+function createWindow() {
+  // Icon for the window title-bar / taskbar
+  const iconPath = isDev
+    ? path.join(__dirname, "..", "build", "icon.png")
+    : path.join(process.resourcesPath, "app.asar", "dist", "logo-shortcut.png");
+
+  mainWindow = new BrowserWindow({
+    width: 1280,
+    height: 800,
+    icon: iconPath,
+    title: "CCRO Archive Locator System",
+    autoHideMenuBar: true,
+    webPreferences: {
+      preload: path.join(__dirname, "preload.cjs"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  if (isDev) {
+    mainWindow.loadURL("http://localhost:5173");
+    // Uncomment to open DevTools automatically in dev mode:
+    // mainWindow.webContents.openDevTools();
+  } else {
+    mainWindow.loadFile(path.join(__dirname, "..", "dist", "index.html"));
+  }
+
+  mainWindow.on("closed", () => {
+    mainWindow = null;
+  });
+}
+
+/* ───── App lifecycle ───── */
+app.whenReady().then(() => {
+  startServer();
+  createWindow();
+
+  app.on("activate", () => {
+    // macOS: re-create window when dock icon is clicked
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
+});
+
+app.on("window-all-closed", () => {
+  if (serverProcess) {
+    serverProcess.kill();
+    serverProcess = null;
+  }
+  app.quit();
+});
+
+app.on("before-quit", () => {
+  if (serverProcess) {
+    serverProcess.kill();
+    serverProcess = null;
+  }
+});

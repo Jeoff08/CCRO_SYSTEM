@@ -12,7 +12,7 @@
     "dev:all": "concurrently \"npm run dev\" \"npm run dev:server\"",
     "electron:dev": "node electron/dev-runner.cjs",
     "build": "vite build",
-    "electron:build": "node scripts/convert-icon.cjs && vite build && electron-builder --win",
+    "electron:build": "node scripts/convert-icon.cjs && vite build && electron-builder --win --dir && node scripts/patch-icon.cjs && electron-builder --win --prepackaged release/win-unpacked",
     "preview": "vite preview",
     "postinstall": "electron-builder install-app-deps"
   },
@@ -34,6 +34,7 @@
     "electron": "^33.0.0",
     "electron-builder": "^25.1.8",
     "png-to-ico": "^3.0.1",
+    "rcedit": "^5.0.2",
     "sharp": "^0.34.5",
     "typescript": "~5.9.3",
     "vite": "^7.2.4"
@@ -59,11 +60,16 @@
         "nsis"
       ],
       "icon": "build/icon.ico",
-      "signAndEditExecutable": false
+      "signAndEditExecutable": false,
+      "sign": false
     },
+    "forceCodeSigning": false,
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "CCRO Archive Locator System",
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico"
     }

@@ -93,7 +93,7 @@ export default function Dashboard({ user, onLogout, activityLog, addLog, clearHi
         <div className="flex items-center w-full">
           <div className="shrink-0 flex items-center px-3 py-3 gap-2 w-60">
             <img
-              src={`${import.meta.env.BASE_URL}461661670_1118300596319054_8742723372426556351_n.jpg`}
+              src="./logo-shortcut.png"
               alt="CCRO"
               className="rounded-full object-cover shrink-0 border-2 border-emerald-300 h-12 w-12"
             />
