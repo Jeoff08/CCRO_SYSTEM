@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from "react";
-import LandingPage from "./components/LandingPage.jsx";
 import LoginForm from "./components/LoginForm.jsx";
 import Dashboard from "./components/Dashboard.jsx";
 import { authAPI, activityLogsAPI } from "./api.js";
 
 const VIEWS = {
-  LANDING: "landing",
   LOGIN: "login",
   DASHBOARD: "dashboard",
 };
 
 export default function App() {
-  const [view, setView] = useState(VIEWS.LANDING);
+  const [view, setView] = useState(VIEWS.LOGIN);
   const [user, setUser] = useState(null);
   const [activityLog, setActivityLog] = useState([]);
 
@@ -79,14 +77,9 @@ export default function App() {
     }
   };
 
-  if (view === VIEWS.LANDING) {
-    return <LandingPage onStartArchiving={() => setView(VIEWS.LOGIN)} />;
-  }
-
   if (view === VIEWS.LOGIN) {
     return (
       <LoginForm
-        onBack={() => setView(VIEWS.LANDING)}
         onLoginSuccess={handleLoginSuccess}
       />
     );

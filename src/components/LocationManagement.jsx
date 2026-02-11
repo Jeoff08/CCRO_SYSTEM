@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
-export const DEFAULT_ROW_LABELS = { 1: "R-1", 2: "R-2", 3: "R-3", 4: "R-4", 5: "R-5", 6: "R-T" };
+export const DEFAULT_ROW_LABELS = { 1: "R-1", 2: "R-2", 3: "R-3", 4: "R-4", 5: "R-5", 6: "R-6" };
 export const DEFAULT_SHELF_LETTERS_BY_BAY = {
   1: ["S-A", "S-B"],
   2: ["S-A", "S-C", "S-B", "S-D"],
@@ -497,7 +497,7 @@ export default function LocationManagement({
     }
     const parts = addRowsInput.split(",").map((s) => s.trim()).filter(Boolean);
     if (parts.length === 0) {
-      setFormError("Enter at least one row label (e.g. R-T, R-6, T-5).");
+      setFormError("Enter at least one row label (e.g. R-6, T-5).");
       return false;
     }
     const existingIndices = Object.keys(draftRowLabels).map(Number).filter((k) => !Number.isNaN(k));
@@ -1097,12 +1097,12 @@ export default function LocationManagement({
                       </select>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[11px] font-semibold tracking-[0.18em] uppercase text-gray-700">Rows (e.g. R-T, R-6, T-5)</label>
+                      <label className="text-[11px] font-semibold tracking-[0.18em] uppercase text-gray-700">Rows (e.g. R-6, T-5)</label>
                       <input
                         type="text"
                         value={addRowsInput}
                         onChange={(e) => setAddRowsInput(e.target.value)}
-                        placeholder="e.g. R-T, R-6, T-5"
+                        placeholder="e.g. R-6, T-5"
                         className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                       />
                     </div>

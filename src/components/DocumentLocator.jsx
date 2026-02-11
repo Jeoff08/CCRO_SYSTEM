@@ -8,10 +8,13 @@ const CERT_TYPES = [
   { code: "COD", label: "Death (COD)" },
 ];
 
-const YEARS = Array.from({ length: 87 }, (_, i) => 1944 + i); // 1944–2030
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
 
 // Defaults (used when no Location Management profile is provided)
-const DEFAULT_ROW_LABELS = { 1: "R-1", 2: "R-2", 3: "R-3", 4: "R-4", 5: "R-5", 6: "R-T" };
+const DEFAULT_ROW_LABELS = { 1: "R-1", 2: "R-2", 3: "R-3", 4: "R-4", 5: "R-5", 6: "R-6" };
 const DEFAULT_SHELF_LETTERS_BY_BAY = {
   1: ["S-A", "S-B"],
   2: ["S-A", "S-C", "S-B", "S-D"],
@@ -20,6 +23,18 @@ const DEFAULT_SHELF_LETTERS_BY_BAY = {
   5: ["S-A", "S-C", "S-B", "S-D"],
   6: ["S-A", "S-B"],
 };
+
+/**
+ * Parse a registry range string like "0001–0100", "1-100", "0001 - 0100"
+ * Returns { start, end } as numbers, or null if unparseable.
+ */
+function parseRegistryRange(rangeStr) {
+  if (!rangeStr) return null;
+  // Support en-dash, em-dash, hyphen, with optional spaces
+  const match = rangeStr.trim().match(/^(\d+)\s*[\u2013\u2014\-–—]\s*(\d+)$/);
+  if (!match) return null;
+  return { start: Number(match[1]), end: Number(match[2]) };
+}
 
 function certCodeForSearch(type) {
   switch (type) {
@@ -65,38 +80,105 @@ export default function DocumentLocator({
 }) {
   const [certificateType, setCertificateType] = useState("");
   const [year, setYear] = useState("");
+  const [month, setMonth] = useState("");
   const [registryNumber, setRegistryNumber] = useState("");
   const [touched, setTouched] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [showAddBoxModal, setShowAddBoxModal] = useState(false);
-  const isYearEnabled = !!certificateType;
-  const isRegistryEnabled = isYearEnabled && !!year;
 
-  const matchingBox = useMemo(() => {
-    if (!certificateType || !year || boxes.length === 0) return null;
+  // --- Derive available options from registered boxes ---
+
+  // Boxes matching the selected certificate type
+  const boxesForType = useMemo(() => {
+    if (!certificateType || boxes.length === 0) return [];
+    return boxes.filter((b) => b.certificateType === certificateType);
+  }, [boxes, certificateType]);
+
+  // Available years (derived from boxes for the selected type)
+  const availableYears = useMemo(() => {
+    if (boxesForType.length === 0) return [];
+    const yearSet = new Set();
+    boxesForType.forEach((b) => {
+      const from = Number(b.year);
+      const to = b.yearTo != null ? Number(b.yearTo) : from;
+      for (let y = from; y <= to; y++) yearSet.add(y);
+    });
+    return [...yearSet].sort((a, b) => a - b);
+  }, [boxesForType]);
+
+  // Boxes matching type + year
+  const boxesForTypeAndYear = useMemo(() => {
+    if (!year || boxesForType.length === 0) return [];
     const yearNum = Number(year);
-    return (
-      boxes.find(
-        (b) => {
-          const yearInRange = b.yearTo != null
-            ? yearNum >= b.year && yearNum <= b.yearTo
-            : Number(b.year) === yearNum;
-          return (
-            b.certificateType === certificateType &&
-            yearInRange
-          );
-        }
-      ) || null
-    );
-  }, [boxes, certificateType, year]);
+    return boxesForType.filter((b) => {
+      const to = b.yearTo != null ? Number(b.yearTo) : Number(b.year);
+      return yearNum >= Number(b.year) && yearNum <= to;
+    });
+  }, [boxesForType, year]);
+
+  // Available months (derived from boxes matching type + year)
+  const availableMonths = useMemo(() => {
+    if (boxesForTypeAndYear.length === 0) return [];
+    const monthSet = new Set();
+    boxesForTypeAndYear.forEach((b) => {
+      const from = b.monthIndex;
+      const to = b.monthIndexTo != null ? b.monthIndexTo : from;
+      for (let m = from; m <= to; m++) monthSet.add(m);
+    });
+    return [...monthSet].sort((a, b) => a - b);
+  }, [boxesForTypeAndYear]);
+
+  const isYearEnabled = !!certificateType && availableYears.length > 0;
+  const isMonthEnabled = isYearEnabled && !!year && availableMonths.length > 0;
+  const isRegistryEnabled = isMonthEnabled && month !== "";
+
+  // All boxes matching cert type + year + month (may be multiple)
+  const matchingBoxes = useMemo(() => {
+    if (!certificateType || !year || month === "" || boxes.length === 0) return [];
+    const yearNum = Number(year);
+    const monthNum = Number(month);
+    return boxes.filter((b) => {
+      const yearInRange = b.yearTo != null
+        ? yearNum >= b.year && yearNum <= b.yearTo
+        : Number(b.year) === yearNum;
+      const monthInRange = b.monthIndexTo != null
+        ? monthNum >= b.monthIndex && monthNum <= b.monthIndexTo
+        : b.monthIndex === monthNum;
+      return b.certificateType === certificateType && yearInRange && monthInRange;
+    });
+  }, [boxes, certificateType, year, month]);
+
+  // Available registry ranges (hint for the user)
+  const availableRegistryRanges = useMemo(() => {
+    if (matchingBoxes.length === 0) return [];
+    return matchingBoxes
+      .filter((b) => b.registryRange)
+      .map((b) => b.registryRange);
+  }, [matchingBoxes]);
+
+  // Best single match: narrows by registry number when provided, else first by type+year
+  const matchingBox = useMemo(() => {
+    if (matchingBoxes.length === 0) return null;
+    if (!registryNumber) return matchingBoxes[0];
+    const regNum = Number(registryNumber);
+    // Try to find a box whose registryRange contains the entered number
+    const rangeMatch = matchingBoxes.find((b) => {
+      const range = parseRegistryRange(b.registryRange);
+      if (!range) return false;
+      return regNum >= range.start && regNum <= range.end;
+    });
+    if (rangeMatch) return rangeMatch;
+    // Fallback: if no box has a matching range, return the first type+year match
+    return matchingBoxes[0];
+  }, [matchingBoxes, registryNumber]);
 
   const handleSearch = (e) => {
     e.preventDefault();
     setTouched(true);
     setError("");
 
-    if (!certificateType || !year || !registryNumber) {
+    if (!certificateType || !year || month === "" || !registryNumber) {
       setError("Please complete all search fields in order.");
       return;
     }
@@ -107,32 +189,60 @@ export default function DocumentLocator({
     }
 
     // Make locator dependent on Box Management: only show results when a matching box exists.
-    if (!matchingBox) {
+    if (matchingBoxes.length === 0) {
       setResult(null);
       setError(
-        "No matching registered box found for the selected Type/Year. Please add/register the box in Box Management first."
+        "No matching registered box found for the selected Type/Year/Month. Please add/register the box in Box Management first."
       );
       if (addLog) {
         addLog("search", {
-          message: `Search (no match) for ${certificateType} - ${year} #${registryNumber}`,
+          message: `Search (no match) for ${certificateType} - ${MONTHS[Number(month)]} ${year} #${registryNumber}`,
         }, null);
       }
       return;
     }
 
+    // Check if registry number falls within any box's registry range
+    const regNum = Number(registryNumber);
+    const rangeMatch = matchingBoxes.find((b) => {
+      const range = parseRegistryRange(b.registryRange);
+      if (!range) return false;
+      return regNum >= range.start && regNum <= range.end;
+    });
+
+    if (!rangeMatch) {
+      // There are boxes for this type/year, but the registry number doesn't match any range
+      const hasAnyRange = matchingBoxes.some((b) => b.registryRange);
+      setResult(null);
+      setError(
+        hasAnyRange
+          ? `Registry number ${registryNumber} does not fall within any registered box's range for ${certificateType} - ${MONTHS[Number(month)]} ${year}. Please check the number or update the box registry ranges.`
+          : "Matching boxes found for the selected Type/Year, but none have a registry range defined. Please update the box in Box Management to include a registry range."
+      );
+      if (addLog) {
+        addLog("search", {
+          message: `Search (no registry range match) for ${certificateType} - ${MONTHS[Number(month)]} ${year} #${registryNumber}`,
+        }, null);
+      }
+      return;
+    }
+
+    // Use the range-matched box
+    const finalBox = rangeMatch;
+
     const yearNum = Number(year);
     const registeredResult = {
-      bay: matchingBox.bay,
-      shelf: matchingBox.shelf,
-      row: matchingBox.row,
-      box: matchingBox.boxNumber,
+      bay: finalBox.bay,
+      shelf: finalBox.shelf,
+      row: finalBox.row,
+      box: finalBox.boxNumber,
       searchCode: buildSearchCodeFromRegisteredBox({
         certificateType,
         year: yearNum,
-        bay: matchingBox.bay,
-        shelf: matchingBox.shelf,
-        row: matchingBox.row,
-        boxNumber: matchingBox.boxNumber,
+        bay: finalBox.bay,
+        shelf: finalBox.shelf,
+        row: finalBox.row,
+        boxNumber: finalBox.boxNumber,
         shelfLettersByBay,
         rowLabels,
       }),
@@ -142,7 +252,7 @@ export default function DocumentLocator({
 
     if (addLog) {
       addLog("search", {
-        message: `Search for ${certificateType} - ${year} #${registryNumber}`,
+        message: `Search for ${certificateType} - ${MONTHS[Number(month)]} ${year} #${registryNumber}`,
         searchCode: registeredResult.searchCode,
       }, registeredResult.searchCode);
     }
@@ -151,6 +261,7 @@ export default function DocumentLocator({
   const handleReset = () => {
     setCertificateType("");
     setYear("");
+    setMonth("");
     setRegistryNumber("");
     setTouched(false);
     setResult(null);
@@ -214,7 +325,7 @@ export default function DocumentLocator({
             Document Locator
           </h2>
           <p className="text-sm text-gray-600 leading-relaxed">
-            Locate physical boxes using certificate type, year, and registry number.
+            Locate physical boxes using certificate type, year, month, and registry number.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -236,7 +347,7 @@ export default function DocumentLocator({
 
       <form
         onSubmit={handleSearch}
-        className="grid md:grid-cols-3 gap-5 border-2 border-emerald-200/60 rounded-3xl p-6 md:p-7 bg-gradient-to-br from-emerald-50/80 via-sky-50/40 to-emerald-50/60 shadow-lg shadow-emerald-100/50 hover:shadow-xl hover:shadow-emerald-200/50 transition-all duration-300"
+        className="grid md:grid-cols-4 gap-5 rounded-3xl p-6 md:p-7 bg-gradient-to-br from-emerald-50/80 via-sky-50/40 to-emerald-50/60 shadow-lg shadow-emerald-100/50 hover:shadow-xl hover:shadow-emerald-200/50 transition-all duration-300"
       >
         <div className="space-y-2">
           <Label>Type of Certificate</Label>
@@ -245,10 +356,11 @@ export default function DocumentLocator({
             onChange={(e) => {
               setCertificateType(e.target.value);
               setYear("");
+              setMonth("");
               setRegistryNumber("");
               setResult(null);
             }}
-            className="w-full rounded-xl border-2 border-emerald-200/60 bg-white px-4 py-3 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-400 hover:border-emerald-300 transition-all duration-200 shadow-sm hover:shadow-md"
+            className="w-full rounded-xl border-0 bg-white px-4 py-3 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 transition-all duration-200 shadow-sm hover:shadow-md"
           >
             <option value="">Select type</option>
             {CERT_TYPES.map((c) => (
@@ -265,16 +377,46 @@ export default function DocumentLocator({
             value={year}
             onChange={(e) => {
               setYear(e.target.value);
+              setMonth("");
               setRegistryNumber("");
               setResult(null);
             }}
             disabled={!isYearEnabled}
-            className="w-full rounded-xl border-2 border-emerald-200/60 bg-white px-4 py-3 text-sm font-medium text-gray-900 disabled:bg-gray-50/80 disabled:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-400 hover:border-emerald-300 transition-all duration-200 shadow-sm hover:shadow-md"
+            className="w-full rounded-xl border-0 bg-white px-4 py-3 text-sm font-medium text-gray-900 disabled:bg-gray-50/80 disabled:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 transition-all duration-200 shadow-sm hover:shadow-md"
           >
-            <option value="">Select year</option>
-            {YEARS.map((y) => (
+            <option value="">
+              {certificateType && availableYears.length === 0
+                ? "No years registered for this type"
+                : "Select year"}
+            </option>
+            {availableYears.map((y) => (
               <option key={y} value={y}>
                 {y}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-2">
+          <Label disabled={!isMonthEnabled}>Month</Label>
+          <select
+            value={month}
+            onChange={(e) => {
+              setMonth(e.target.value);
+              setRegistryNumber("");
+              setResult(null);
+            }}
+            disabled={!isMonthEnabled}
+            className="w-full rounded-xl border-0 bg-white px-4 py-3 text-sm font-medium text-gray-900 disabled:bg-gray-50/80 disabled:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 transition-all duration-200 shadow-sm hover:shadow-md"
+          >
+            <option value="">
+              {year && availableMonths.length === 0
+                ? "No months registered for this year"
+                : "Select month"}
+            </option>
+            {availableMonths.map((idx) => (
+              <option key={idx} value={idx}>
+                {MONTHS[idx]}
               </option>
             ))}
           </select>
@@ -293,21 +435,30 @@ export default function DocumentLocator({
               setResult(null);
             }}
             disabled={!isRegistryEnabled}
-            placeholder="e.g., 1234"
-            className="w-full rounded-xl border-2 border-emerald-200/60 bg-white px-4 py-3 text-sm font-medium text-gray-900 disabled:bg-gray-50/80 disabled:text-gray-400 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-400 hover:border-emerald-300 transition-all duration-200 shadow-sm hover:shadow-md"
+            placeholder={
+              availableRegistryRanges.length > 0
+                ? `Ranges: ${availableRegistryRanges.join(", ")}`
+                : "e.g., 1234"
+            }
+            className="w-full rounded-xl border-0 bg-white px-4 py-3 text-sm font-medium text-gray-900 disabled:bg-gray-50/80 disabled:text-gray-400 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 transition-all duration-200 shadow-sm hover:shadow-md"
           />
+          {isRegistryEnabled && availableRegistryRanges.length > 0 && (
+            <p className="text-[10px] text-emerald-600 mt-1 px-1">
+              Available: {availableRegistryRanges.join(", ")}
+            </p>
+          )}
         </div>
 
-        <div className="md:col-span-3 flex flex-wrap items-center justify-between gap-4 pt-3 border-t-2 border-emerald-200/50 mt-2">
+        <div className="md:col-span-4 flex flex-wrap items-center justify-between gap-4 pt-3 border-t-2 border-emerald-200/50 mt-2">
           <div className="flex items-center gap-2 text-[11px] text-gray-600 bg-white/70 rounded-full px-3 py-1.5 border border-emerald-200/50 shadow-sm">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50" />
-            Type → Year → Registry number (each unlocks the next).
+            Type → Year → Month → Registry number (options are based on registered boxes).
           </div>
           <div className="flex gap-3">
             <button
               type="button"
               onClick={handleReset}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-emerald-200/60 bg-white px-4 py-2 text-xs font-bold text-gray-700 hover:bg-emerald-50 hover:border-emerald-300 hover:shadow-md active:scale-95 transition-all duration-200"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border-0 bg-white px-4 py-2 text-xs font-bold text-gray-700 hover:bg-emerald-50 hover:shadow-md active:scale-95 transition-all duration-200 shadow-sm"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />

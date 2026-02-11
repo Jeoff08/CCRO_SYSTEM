@@ -114,7 +114,7 @@ function initDatabase() {
       3: "R-3",
       4: "R-4",
       5: "R-5",
-      6: "R-T",
+      6: "R-6",
     };
 
     db.prepare(
@@ -130,6 +130,27 @@ function initDatabase() {
 }
 
 initDatabase();
+
+// Migration: fix R-T → R-6 in existing location profiles
+(function migrateRowLabels() {
+  const rows = db.prepare("SELECT id, row_labels FROM location_profiles").all();
+  for (const row of rows) {
+    try {
+      const labels = JSON.parse(row.row_labels);
+      let changed = false;
+      for (const key of Object.keys(labels)) {
+        if (labels[key] === "R-T") {
+          labels[key] = "R-6";
+          changed = true;
+        }
+      }
+      if (changed) {
+        db.prepare("UPDATE location_profiles SET row_labels = ?, updated_at = datetime('now') WHERE id = ?")
+          .run(JSON.stringify(labels), row.id);
+      }
+    } catch { /* skip malformed rows */ }
+  }
+})();
 
 export default db;
 
