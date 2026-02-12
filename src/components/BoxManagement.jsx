@@ -673,6 +673,26 @@ export function BoxForm({ editingBox, prefillPayload, onSaved, onCancel, existin
       return;
     }
 
+    // Validate registry range format if provided (must be "number-number", e.g. "1-100")
+    if (registryRange.trim()) {
+      const rangePattern = /^\d+-\d+$/;
+      if (!rangePattern.test(registryRange.trim())) {
+        setError("Registry Number Range must be in the format: start-end (e.g., 1-100).");
+        return;
+      }
+      const [startStr, endStr] = registryRange.trim().split("-");
+      const rangeStart = Number(startStr);
+      const rangeEnd = Number(endStr);
+      if (rangeStart <= 0 || rangeEnd <= 0) {
+        setError("Registry Number Range values must be greater than 0.");
+        return;
+      }
+      if (rangeStart > rangeEnd) {
+        setError("Registry Number Range start must not be greater than the end (e.g., 1-100, not 100-1).");
+        return;
+      }
+    }
+
     const duplicate = existingBoxes.find(
       (b) =>
         b.id !== editingBox?.id &&
@@ -864,9 +884,16 @@ export function BoxForm({ editingBox, prefillPayload, onSaved, onCancel, existin
           <input
             type="text"
             value={registryRange}
-            onChange={(e) => setRegistryRange(e.target.value)}
+            onChange={(e) => {
+              // Allow only digits and a single dash (e.g. "1-100")
+              const val = e.target.value.replace(/[^\d-]/g, "");
+              // Prevent multiple dashes
+              const parts = val.split("-");
+              const sanitized = parts.length > 2 ? parts[0] + "-" + parts.slice(1).join("") : val;
+              setRegistryRange(sanitized);
+            }}
             className="w-full rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-            placeholder="e.g., 0001–0100"
+            placeholder="e.g., 1-100"
           />
         </Field>
 

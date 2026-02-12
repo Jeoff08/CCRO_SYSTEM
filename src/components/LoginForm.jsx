@@ -47,6 +47,9 @@ export default function LoginForm({ onBack, onLoginSuccess }) {
             <p className=" text-xs text-center text-white/80">
               © 2026 City Civil Registrar Office • Archive Locator System
             </p>
+            <p className="text-xs text-center text-white/60">
+              Developed by CS students, St. Peter's College
+            </p>
           </div>
 
         <div className="bg-white p-8 md:p-12 flex items-center justify-center">
