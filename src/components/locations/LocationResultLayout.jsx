@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import LocationRack3D from "./LocationRack3D.jsx";
 
 const ACCENT_STYLES = {
   emerald: {
@@ -33,6 +34,7 @@ export default function LocationResultLayout({
   accent = "emerald",
 }) {
   const matchCellRef = useRef(null);
+  const [layoutView, setLayoutView] = useState("2d");
 
   useEffect(() => {
     if (result && matchCellRef.current && !isPreview) {
@@ -142,11 +144,40 @@ export default function LocationResultLayout({
         </>
       )}
 
-      <h4 className="text-xs font-semibold text-gray-700 mt-4 mb-2">
-        {hasResult
-          ? `Block layout — document located at Bay ${resultBay}, Shelf ${shelfLabel}, Row ${rowLabel}`
-          : "Block layout preview"}
-      </h4>
+      <div className="flex items-center justify-between mt-4 mb-2">
+        <h4 className="text-xs font-semibold text-gray-700">
+          {hasResult
+            ? `Block layout — document located at Bay ${resultBay}, Shelf ${shelfLabel}, Row ${rowLabel}`
+            : "Block layout preview"}
+        </h4>
+        <div className="flex gap-0.5 bg-gray-100 rounded-xl p-0.5 shrink-0 ml-4">
+          <button
+            type="button"
+            onClick={() => setLayoutView("2d")}
+            className={`px-3 py-1 text-[11px] font-semibold rounded-lg transition-all duration-200 ${layoutView === "2d" ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700"}`}
+          >
+            2D Table
+          </button>
+          <button
+            type="button"
+            onClick={() => setLayoutView("3d")}
+            className={`px-3 py-1 text-[11px] font-semibold rounded-lg transition-all duration-200 ${layoutView === "3d" ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700"}`}
+          >
+            3D Model
+          </button>
+        </div>
+      </div>
+
+      {layoutView === "3d" && (
+        <LocationRack3D
+          shelfLettersByBay={shelfLettersByBay}
+          rowLabels={rowLabels}
+          highlight={hasResult ? { bay: resultBay, shelf: resultShelf, row: resultRow, box: resultBox } : null}
+          className="mb-2"
+        />
+      )}
+
+      {layoutView === "2d" && (
       <div className="overflow-x-auto w-full">
         <div className="border border-emerald-200 rounded-xl overflow-hidden inline-block min-w-full">
           <table className="text-center text-sm border-collapse min-w-full">
@@ -233,9 +264,12 @@ export default function LocationResultLayout({
           </table>
         </div>
       </div>
+      )}
 
       <p className="mt-3 text-[11px] text-gray-600">
-        Use this table to locate your document in physical storage. The highlighted cell shows Bay, Shelf, and Row. Hover any cell to see its location.
+        {layoutView === "3d"
+          ? "Interactive 3D model of the storage layout. The highlighted cell shows the document location."
+          : "Use this table to locate your document in physical storage. The highlighted cell shows Bay, Shelf, and Row. Hover any cell to see its location."}
         {hasResult && !isPreview && noteSuffix}
       </p>
     </div>

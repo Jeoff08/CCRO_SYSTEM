@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Modal, Toast } from "../ui/index.js";
 import { DEFAULT_ROW_LABELS, DEFAULT_SHELF_LETTERS_BY_BAY } from "../../constants/index.js";
 import { normalizeShelvesInput, validateShelvesByBay, makeId } from "../../utils/index.js";
+import LocationRack3D from "./LocationRack3D.jsx";
 
 export default function LocationManagement({
   profiles,
@@ -55,6 +56,9 @@ export default function LocationManagement({
   /* ── Inline editing ── */
   const [editingCell, setEditingCell] = useState(null);
   const [editingValue, setEditingValue] = useState("");
+
+  /* ── Layout view mode ── */
+  const [layoutView, setLayoutView] = useState("2d");
 
   /* ── Toasts ── */
   const [successMessage, setSuccessMessage] = useState("");
@@ -468,14 +472,43 @@ export default function LocationManagement({
 
           {/* Editable Block Layout */}
           <div className="border-2 border-emerald-200/60 rounded-3xl bg-gradient-to-br from-white via-emerald-50/30 to-sky-50/20 p-5 md:p-6 shadow-lg shadow-emerald-100/50 hover:shadow-xl hover:shadow-emerald-200/50 transition-all duration-300">
-            <h3 className="text-base font-bold text-gray-900 flex items-center gap-2 mb-4">
-              <div className="w-1.5 h-1.5 rounded-full bg-sky-500 shadow-sm shadow-sky-500/50" />
-              Editable Block Layout
-            </h3>
-            <p className="text-xs text-gray-500 mb-4 leading-relaxed">
-              Click on any bay header, shelf label, or row label to edit directly. Changes are saved to draft. Click "Save Changes" to update the profile.
-            </p>
-            {selectedProfile && (
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-sky-500 shadow-sm shadow-sky-500/50" />
+                  Editable Block Layout
+                </h3>
+                <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                  {layoutView === "2d"
+                    ? "Click on any bay header, shelf label, or row label to edit directly. Changes are saved to draft."
+                    : "Interactive 3D model of the storage rack layout. Drag to rotate, scroll to zoom."}
+                </p>
+              </div>
+              <div className="flex gap-0.5 bg-gray-100 rounded-xl p-0.5 shrink-0 ml-4">
+                <button
+                  type="button"
+                  onClick={() => setLayoutView("2d")}
+                  className={`px-3 py-1.5 text-[11px] font-semibold rounded-lg transition-all duration-200 ${layoutView === "2d" ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700"}`}
+                >
+                  2D Table
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLayoutView("3d")}
+                  className={`px-3 py-1.5 text-[11px] font-semibold rounded-lg transition-all duration-200 ${layoutView === "3d" ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700"}`}
+                >
+                  3D Model
+                </button>
+              </div>
+            </div>
+            {selectedProfile && layoutView === "3d" && (
+              <LocationRack3D
+                shelfLettersByBay={draftShelvesByBay}
+                rowLabels={draftRowLabels}
+                className="mt-2"
+              />
+            )}
+            {selectedProfile && layoutView === "2d" && (
               <div className="overflow-x-auto w-full">
                 <div className="border border-emerald-200 rounded-xl overflow-hidden inline-block min-w-full">
                   <table className="text-center text-sm border-collapse min-w-full">

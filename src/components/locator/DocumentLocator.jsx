@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import CertificateBadge from "../shared/CertificateBadge.jsx";
 import LocationResultLayout from "../locations/LocationResultLayout.jsx";
+import LocationRack3D from "../locations/LocationRack3D.jsx";
 import { Label } from "../ui/index.js";
 import YearCombobox from "./YearCombobox.jsx";
 import { CERT_TYPES, MONTHS } from "../../constants/index.js";
@@ -20,6 +21,7 @@ export default function DocumentLocator({
   const [touched, setTouched] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
+  const [show3DPreview, setShow3DPreview] = useState(false);
 
   /* ── Derived filters ── */
   const boxesForType = useMemo(() => {
@@ -174,6 +176,41 @@ export default function DocumentLocator({
           </div>
         </div>
       </form>
+
+      {/* 3D Rack Preview toggle */}
+      <div className="border-2 border-emerald-200/60 rounded-3xl bg-gradient-to-br from-white via-emerald-50/30 to-sky-50/20 p-5 md:p-6 shadow-lg shadow-emerald-100/50 hover:shadow-xl hover:shadow-emerald-200/50 transition-all duration-300">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-sky-500 shadow-sm shadow-sky-500/50" />
+            <h3 className="text-sm font-bold text-gray-900">3D Rack Preview</h3>
+            {result && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-100 rounded-full px-2 py-0.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Location highlighted
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setShow3DPreview((v) => !v)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-xl transition-all duration-200 border border-emerald-200 bg-white text-gray-700 hover:bg-emerald-50 hover:border-emerald-300 shadow-sm"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
+            </svg>
+            {show3DPreview ? "Hide 3D" : "Show 3D"}
+          </button>
+        </div>
+        {show3DPreview && (
+          <div className="mt-4">
+            <LocationRack3D
+              shelfLettersByBay={shelfLettersByBay}
+              rowLabels={rowLabels}
+              highlight={result && matchingBox ? { bay: matchingBox.bay, shelf: matchingBox.shelf, row: matchingBox.row, box: matchingBox.boxNumber } : null}
+            />
+          </div>
+        )}
+      </div>
 
       {touched && error && (
         <div className="animate-in slide-in-from-top-2 fade-in duration-300">
