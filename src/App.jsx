@@ -1,56 +1,34 @@
 import React, { useState } from "react";
-import LandingPage from "./components/LandingPage.jsx";
-import LoginForm from "./components/LoginForm.jsx";
-import Dashboard from "./components/Dashboard.jsx";
+import LoginForm from "./components/auth/LoginForm.jsx";
+import Dashboard from "./components/dashboard/Dashboard.jsx";
+import { useActivityLog } from "./hooks/index.js";
 
 const VIEWS = {
-  LANDING: "landing",
   LOGIN: "login",
   DASHBOARD: "dashboard",
 };
 
 export default function App() {
-  const [view, setView] = useState(VIEWS.LANDING);
+  const [view, setView] = useState(VIEWS.LOGIN);
   const [user, setUser] = useState(null);
-  const [activityLog, setActivityLog] = useState([]);
+  const { activityLog, addLog, clearHistory } = useActivityLog(user);
 
-  const addLog = (type, details) => {
-    setActivityLog((prev) => [
-      {
-        id: crypto.randomUUID(),
-        type,
-        details,
-        timestamp: new Date().toISOString(),
-      },
-      ...prev,
-    ]);
-  };
-
-  const handleLoginSuccess = (userInfo) => {
+  const handleLoginSuccess = async (userInfo) => {
     setUser(userInfo);
-    addLog("login", `User "${userInfo.username}" logged in.`);
+    await addLog("login", `User "${userInfo.username}" logged in.`);
     setView(VIEWS.DASHBOARD);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (user) {
-      addLog("logout", `User "${user.username}" logged out.`);
+      await addLog("logout", `User "${user.username}" logged out.`);
     }
     setUser(null);
     setView(VIEWS.LOGIN);
   };
 
-  if (view === VIEWS.LANDING) {
-    return <LandingPage onStartArchiving={() => setView(VIEWS.LOGIN)} />;
-  }
-
   if (view === VIEWS.LOGIN) {
-    return (
-      <LoginForm
-        onBack={() => setView(VIEWS.LANDING)}
-        onLoginSuccess={handleLoginSuccess}
-      />
-    );
+    return <LoginForm onLoginSuccess={handleLoginSuccess} />;
   }
 
   return (
@@ -59,7 +37,7 @@ export default function App() {
       onLogout={handleLogout}
       activityLog={activityLog}
       addLog={addLog}
+      clearHistory={clearHistory}
     />
   );
 }
-

@@ -1,21 +1,10 @@
 import React from "react";
-
-const COLORS = {
-  COLB: "bg-blue-600 text-white",
-  COM: "bg-red-600 text-white",
-  COD: "bg-purple-600 text-white",
-};
-
-const LABELS = {
-  COLB: "Birth Certificate",
-  COM: "Marriage Certificate",
-  COD: "Death Certificate",
-};
+import { CERT_LABELS, CERT_COLORS } from "../../constants/index.js";
 
 export default function CertificateBadge({ type, compact }) {
   if (!type) return null;
-  const color = COLORS[type] || "bg-gray-600 text-white";
-  const label = LABELS[type] || type;
+  const color = CERT_COLORS[type] || "bg-gray-600 text-white";
+  const label = CERT_LABELS[type] || type;
 
   if (compact) {
     return (
@@ -36,4 +25,3 @@ export default function CertificateBadge({ type, compact }) {
     </span>
   );
 }
-
