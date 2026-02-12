@@ -27,12 +27,13 @@ export default function LoginForm({ onBack, onLoginSuccess }) {
       <div className="grid min-h-screen w-full md:grid-cols-[1.15fr_1fr]">
         <div className="relative bg-gradient-to-br from-emerald-700 via-emerald-600 to-emerald-500 text-white p-8 md:p-12">
           <div className="min-h-full flex flex-col items-center justify-center text-center gap-3">
-            <div className="flex h-[350px] w-[350px] items-center justify-center overflow-hidden rounded-full bg-white/10">
+             <div className="flex h-[320px] w-[320px] items-center justify-center drop-shadow-lg">
                 <img
-                  src="./logo-shortcut.png"
+                  src="./logo-rm.png"
                   alt="City Civil Registrar Office Logo"
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-contain"
                 />
+                
               </div>
             <div className="space-y-1">
                 <p className="text-[18px] font-semibold uppercase tracking-[0.22em] text-white/90">
