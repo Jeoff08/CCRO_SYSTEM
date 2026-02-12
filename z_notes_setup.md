@@ -62,11 +62,12 @@ This will:
 1. Convert the app icon (JPG → PNG → ICO)
 2. Build the Vite frontend (output in `dist/`)
 3. Package everything with electron-builder (output in `release/`)
+4. Patch the icon onto the executable
 
 The installer is located at:
 
 ```
-release/CCRO Archive Locator System Setup 1.0.0.exe
+release/CCRO Archive Locator System Setup 1.0.2.exe
 ```
 
 ## Notes
@@ -89,37 +90,90 @@ release/CCRO Archive Locator System Setup 1.0.0.exe
 ## Project Structure
 
 ```
-├── electron/              Electron main process
-│   ├── main.cjs           Main process entry
-│   ├── preload.cjs        Preload script
-│   └── dev-runner.cjs     Dev mode launcher
-├── server/                Express backend + SQLite
-│   ├── db.js              Database setup & schema
-│   ├── index.js           Express server entry
-│   └── routes/            API route handlers
+├── electron/                  Electron main process
+│   ├── main.cjs               Main process entry
+│   ├── preload.cjs            Preload script (IPC bridge)
+│   └── dev-runner.cjs         Dev mode launcher
+├── server/                    Express backend + SQLite
+│   ├── index.js               Express server entry
+│   ├── db/                    Database layer
+│   │   ├── index.js           DB barrel export
+│   │   ├── connection.js      SQLite connection setup
+│   │   ├── schema.js          Table definitions
+│   │   ├── migrations.js      Schema migrations
+│   │   └── seeds.js           Default seed data
+│   ├── lib/                   Shared server utilities
+│   │   └── transforms.js      Data transform helpers
+│   ├── middleware/             Express middleware
+│   │   └── errorHandler.js    Global error handler
+│   └── routes/                API route handlers
 │       ├── auth.js
 │       ├── boxes.js
 │       ├── locationProfiles.js
 │       └── activityLogs.js
-├── src/                   React frontend (Vite + Tailwind CSS)
-│   ├── App.jsx            Main app component
-│   ├── api.js             API client helper
-│   ├── main.jsx           Entry point
-│   ├── style.css          Global styles
-│   └── components/        React components
-│       ├── Dashboard.jsx
-│       ├── DocumentLocator.jsx
-│       ├── BoxManagement.jsx
-│       ├── LocationManagement.jsx
-│       ├── ActivityLog.jsx
-│       ├── LoginForm.jsx
-│       ├── Sidebar.jsx
-│       └── CertificateBadge.jsx
-├── scripts/               Build utilities
-│   └── convert-icon.cjs   Icon conversion (JPG → ICO)
-├── build/                 Generated app icons (gitignored)
-├── dist/                  Vite build output (gitignored)
-├── release/               Electron installer output (gitignored)
+├── src/                       React frontend (Vite + Tailwind CSS v4)
+│   ├── App.jsx                Main app component
+│   ├── main.jsx               Entry point
+│   ├── style.css              Global styles
+│   ├── api/                   API client modules
+│   │   ├── index.js           API barrel export
+│   │   ├── client.js          Base fetch/request helper
+│   │   ├── auth.js            Auth API calls
+│   │   ├── boxes.js           Box API calls
+│   │   ├── locationProfiles.js  Location profile API calls
+│   │   └── activityLogs.js    Activity log API calls
+│   ├── components/            React components
+│   │   ├── auth/
+│   │   │   └── LoginForm.jsx
+│   │   ├── boxes/
+│   │   │   ├── BoxManagement.jsx
+│   │   │   ├── BoxForm.jsx
+│   │   │   ├── ConfirmBoxStep.jsx
+│   │   │   └── DeleteBoxModal.jsx
+│   │   ├── dashboard/
+│   │   │   ├── Dashboard.jsx
+│   │   │   └── DashboardHome.jsx
+│   │   ├── layout/
+│   │   │   └── Sidebar.jsx
+│   │   ├── locations/
+│   │   │   ├── LocationManagement.jsx
+│   │   │   └── LocationResultLayout.jsx
+│   │   ├── locator/
+│   │   │   ├── DocumentLocator.jsx
+│   │   │   └── YearCombobox.jsx
+│   │   ├── shared/
+│   │   │   └── CertificateBadge.jsx
+│   │   └── ui/
+│   │       ├── index.js       UI barrel export
+│   │       ├── Field.jsx
+│   │       ├── Label.jsx
+│   │       ├── Modal.jsx
+│   │       └── Toast.jsx
+│   ├── constants/             Shared constants
+│   │   ├── index.js           Constants barrel export
+│   │   ├── certificates.js    Certificate type definitions
+│   │   ├── dates.js           Date/year helpers
+│   │   └── locations.js       Location-related constants
+│   ├── hooks/                 Custom React hooks
+│   │   ├── index.js           Hooks barrel export
+│   │   ├── useBoxes.js        Box data hook
+│   │   ├── useLocationProfiles.js  Location data hook
+│   │   └── useActivityLog.js  Activity log hook
+│   └── utils/                 Frontend utilities
+│       ├── index.js           Utils barrel export
+│       ├── formatting.js      Display formatting helpers
+│       ├── location.js        Location logic helpers
+│       └── registry.js        Registry number utilities
+├── public/                    Static assets
+│   ├── logo-rm.png            App logo (transparent)
+│   ├── logo-shortcut.png      Shortcut icon
+│   └── vite.svg               Vite default asset
+├── scripts/                   Build utilities
+│   ├── convert-icon.cjs       Icon conversion (JPG → ICO)
+│   └── patch-icon.cjs         Patch icon onto built exe
+├── build/                     Generated app icons (gitignored)
+├── dist/                      Vite build output (gitignored)
+├── release/                   Electron installer output (gitignored)
 ├── package.json
 └── vite.config.mts
 ```

@@ -1,5 +1,5 @@
 import express from "express";
-import db from "../db.js";
+import db from "../db/index.js";
 
 const router = express.Router();
 
@@ -9,11 +9,15 @@ router.post("/login", (req, res) => {
     const { username, password } = req.body;
 
     if (!username || !password) {
-      return res.status(400).json({ error: "Username and password are required" });
+      return res
+        .status(400)
+        .json({ error: "Username and password are required" });
     }
 
     const user = db
-      .prepare("SELECT id, username, role FROM users WHERE username = ? AND password = ?")
+      .prepare(
+        "SELECT id, username, role FROM users WHERE username = ? AND password = ?"
+      )
       .get(username, password);
 
     if (!user) {
@@ -44,4 +48,3 @@ router.get("/user/:id", (req, res) => {
 });
 
 export default router;
-

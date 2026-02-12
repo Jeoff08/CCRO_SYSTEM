@@ -4,6 +4,7 @@ import boxesRouter from "./routes/boxes.js";
 import locationProfilesRouter from "./routes/locationProfiles.js";
 import activityLogsRouter from "./routes/activityLogs.js";
 import authRouter from "./routes/auth.js";
+import { errorHandler } from "./middleware/errorHandler.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -23,7 +24,9 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", message: "CCRO Archive Locator API is running" });
 });
 
+// Global error handler (must be registered after routes)
+app.use(errorHandler);
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
-

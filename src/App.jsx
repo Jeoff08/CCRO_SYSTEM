@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
-import LoginForm from "./components/LoginForm.jsx";
-import Dashboard from "./components/Dashboard.jsx";
-import { authAPI, activityLogsAPI } from "./api.js";
+import React, { useState } from "react";
+import LoginForm from "./components/auth/LoginForm.jsx";
+import Dashboard from "./components/dashboard/Dashboard.jsx";
+import { useActivityLog } from "./hooks/index.js";
 
 const VIEWS = {
   LOGIN: "login",
@@ -11,48 +11,7 @@ const VIEWS = {
 export default function App() {
   const [view, setView] = useState(VIEWS.LOGIN);
   const [user, setUser] = useState(null);
-  const [activityLog, setActivityLog] = useState([]);
-
-  // Load activity logs on mount
-  useEffect(() => {
-    loadActivityLogs();
-  }, []);
-
-  const loadActivityLogs = async () => {
-    try {
-      const logs = await activityLogsAPI.getAll(100);
-      setActivityLog(logs);
-    } catch (error) {
-      console.error("Failed to load activity logs:", error);
-    }
-  };
-
-  const addLog = async (type, details, searchCode = null) => {
-    try {
-      const logData = {
-        userId: user?.id || null,
-        username: user?.username || null,
-        type,
-        details: typeof details === "string" ? details : details,
-        searchCode,
-      };
-
-      const newLog = await activityLogsAPI.create(logData);
-      setActivityLog((prev) => [newLog, ...prev]);
-    } catch (error) {
-      console.error("Failed to create activity log:", error);
-      // Fallback to local state if API fails
-      setActivityLog((prev) => [
-        {
-          id: crypto.randomUUID(),
-          type,
-          details,
-          timestamp: new Date().toISOString(),
-        },
-        ...prev,
-      ]);
-    }
-  };
+  const { activityLog, addLog, clearHistory } = useActivityLog(user);
 
   const handleLoginSuccess = async (userInfo) => {
     setUser(userInfo);
@@ -68,21 +27,8 @@ export default function App() {
     setView(VIEWS.LOGIN);
   };
 
-  const clearHistory = async () => {
-    try {
-      await activityLogsAPI.clearAll();
-      setActivityLog([]);
-    } catch (error) {
-      console.error("Failed to clear activity logs:", error);
-    }
-  };
-
   if (view === VIEWS.LOGIN) {
-    return (
-      <LoginForm
-        onLoginSuccess={handleLoginSuccess}
-      />
-    );
+    return <LoginForm onLoginSuccess={handleLoginSuccess} />;
   }
 
   return (
@@ -95,4 +41,3 @@ export default function App() {
     />
   );
 }
-

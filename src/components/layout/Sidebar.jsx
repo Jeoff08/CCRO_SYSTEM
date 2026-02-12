@@ -1,8 +1,15 @@
 import React, { useState } from "react";
 
+export const TABS = {
+  DASHBOARD: "dashboard",
+  BOXES: "boxes",
+  LOCATOR: "locator",
+  LOCATIONS: "locations",
+};
+
 const SIDEBAR_ITEMS = [
   {
-    id: "dashboard",
+    id: TABS.DASHBOARD,
     label: "Dashboard",
     icon: (
       <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -11,7 +18,7 @@ const SIDEBAR_ITEMS = [
     ),
   },
   {
-    id: "boxes",
+    id: TABS.BOXES,
     label: "Box Management",
     icon: (
       <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -20,7 +27,7 @@ const SIDEBAR_ITEMS = [
     ),
   },
   {
-    id: "locator",
+    id: TABS.LOCATOR,
     label: "Document Locator",
     icon: (
       <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -29,7 +36,7 @@ const SIDEBAR_ITEMS = [
     ),
   },
   {
-    id: "locations",
+    id: TABS.LOCATIONS,
     label: "Location Management",
     icon: (
       <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -49,7 +56,6 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout }) {
         collapsed ? "w-[68px]" : "w-60"
       }`}
     >
-      {/* Toggle button */}
       <div className={`flex ${collapsed ? "justify-center" : "justify-end px-3"} mb-3`}>
         <button
           type="button"
@@ -58,27 +64,17 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout }) {
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          <svg
-            className={`w-5 h-5 transition-transform duration-300 ${collapsed ? "rotate-180" : ""}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
+          <svg className={`w-5 h-5 transition-transform duration-300 ${collapsed ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
             <rect x="2" y="4" width="20" height="16" rx="2" />
             <path d="M8 6v12" />
           </svg>
         </button>
       </div>
 
-      {/* Navigation items */}
       <nav className="flex flex-col gap-1.5 px-2.5 text-sm font-medium flex-1">
         {SIDEBAR_ITEMS.map((item) => {
           const isActive = activeTab === item.id;
           const isHovered = hoveredItem === item.id;
-
           return (
             <button
               key={item.id}
@@ -88,9 +84,7 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout }) {
               onMouseLeave={() => setHoveredItem(null)}
               title={item.label}
               className={`relative flex items-center rounded-xl transition-all duration-200 ease-out group ${
-                collapsed
-                  ? "w-full justify-center p-2.5"
-                  : "w-full justify-start px-3.5 py-2.5 gap-3"
+                collapsed ? "w-full justify-center p-2.5" : "w-full justify-start px-3.5 py-2.5 gap-3"
               } ${
                 isActive
                   ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/25"
@@ -98,40 +92,19 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout }) {
                   ? "bg-gray-200 text-gray-700"
                   : "text-gray-500 hover:text-gray-700"
               }`}
-              style={
-                isActive
-                  ? { transform: isHovered ? "translateX(3px)" : "translateX(0)" }
-                  : {}
-              }
+              style={isActive ? { transform: isHovered ? "translateX(3px)" : "translateX(0)" } : {}}
             >
-              {/* Active indicator bar */}
               {isActive && !collapsed && (
-                <span
-                  className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-white transition-all duration-300"
-                />
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-white transition-all duration-300" />
               )}
-
-              {/* Icon with subtle animation */}
-              <span
-                className={`transition-transform duration-200 ${
-                  isHovered && !isActive ? "scale-110" : ""
-                }`}
-              >
+              <span className={`transition-transform duration-200 ${isHovered && !isActive ? "scale-110" : ""}`}>
                 {item.icon}
               </span>
-
-              {/* Label with slide-in effect */}
               {!collapsed && (
-                <span
-                  className={`whitespace-nowrap overflow-hidden transition-all duration-200 ${
-                    isActive ? "font-semibold" : "font-medium"
-                  }`}
-                >
+                <span className={`whitespace-nowrap overflow-hidden transition-all duration-200 ${isActive ? "font-semibold" : "font-medium"}`}>
                   {item.label}
                 </span>
               )}
-
-              {/* Tooltip for collapsed state */}
               {collapsed && isHovered && (
                 <span className="absolute left-full ml-3 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-gray-700 shadow-lg shadow-gray-700/40 whitespace-nowrap z-50 pointer-events-none">
                   {item.label}
@@ -142,7 +115,6 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout }) {
         })}
       </nav>
 
-      {/* Logout button */}
       <div className="shrink-0 px-2.5 pt-4 mt-2">
         <button
           type="button"
@@ -161,12 +133,3 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout }) {
     </aside>
   );
 }
-
-// Export SIDEBAR_ITEMS and tab constants so Dashboard can reference them
-export const TABS = {
-  DASHBOARD: "dashboard",
-  BOXES: "boxes",
-  LOCATOR: "locator",
-  LOCATIONS: "locations",
-};
-

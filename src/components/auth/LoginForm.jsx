@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { authAPI } from "../api.js";
+import { authAPI } from "../../api/index.js";
 
-export default function LoginForm({ onBack, onLoginSuccess }) {
+export default function LoginForm({ onLoginSuccess }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -25,54 +25,41 @@ export default function LoginForm({ onBack, onLoginSuccess }) {
   return (
     <div className="min-h-screen w-full bg-white">
       <div className="grid min-h-screen w-full md:grid-cols-[1.15fr_1fr]">
+        {/* Left panel */}
         <div className="relative bg-gradient-to-br from-emerald-700 via-emerald-600 to-emerald-500 text-white p-8 md:p-12">
           <div className="min-h-full flex flex-col items-center justify-center text-center gap-3">
-             <div className="flex h-[320px] w-[320px] items-center justify-center drop-shadow-lg">
-                <img
-                  src="./logo-rm.png"
-                  alt="City Civil Registrar Office Logo"
-                  className="h-full w-full object-contain"
-                />
-                
-              </div>
-            <div className="space-y-1">
-                <p className="text-[18px] font-semibold uppercase tracking-[0.22em] text-white/90">
-                  CCRO
-                </p>
-                <p className="text-[24px] font-semibold text-white">
-                  Archive Locator System
-                </p>
-              </div>
+            <div className="flex h-[320px] w-[320px] items-center justify-center drop-shadow-lg">
+              <img
+                src="./logo-rm.png"
+                alt="City Civil Registrar Office Logo"
+                className="h-full w-full object-contain"
+              />
             </div>
-
-            <p className=" text-xs text-center text-white/80">
-              © 2026 City Civil Registrar Office • Archive Locator System
-            </p>
-            <p className="text-xs text-center text-white/60">
-              Developed by CS students, St. Peter's College
-            </p>
+            <div className="space-y-1">
+              <p className="text-[18px] font-semibold uppercase tracking-[0.22em] text-white/90">CCRO</p>
+              <p className="text-[24px] font-semibold text-white">Archive Locator System</p>
+            </div>
           </div>
+          <p className="text-xs text-center text-white/80">
+            © 2026 City Civil Registrar Office • Archive Locator System
+          </p>
+          <p className="text-xs text-center text-white/60">
+            Developed by CS students, St. Peter's College
+          </p>
+        </div>
 
+        {/* Right panel */}
         <div className="bg-white p-8 md:p-12 flex items-center justify-center">
           <div className="w-full max-w-md">
             <div className="space-y-2 mb-8">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">
-                Login
-              </p>
-              <h3 className="text-2xl font-semibold text-emerald-900">
-                Welcome back!
-              </h3>
-              <p className="text-sm text-emerald-800/80">
-                Use your assigned username and password.
-              </p>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Login</p>
+              <h3 className="text-2xl font-semibold text-emerald-900">Welcome back!</h3>
+              <p className="text-sm text-emerald-800/80">Use your assigned username and password.</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-1.5">
-                <label
-                  htmlFor="username"
-                  className="text-[11px] font-semibold text-emerald-700 uppercase tracking-[0.18em]"
-                >
+                <label htmlFor="username" className="text-[11px] font-semibold text-emerald-700 uppercase tracking-[0.18em]">
                   Username
                 </label>
                 <input
@@ -88,10 +75,7 @@ export default function LoginForm({ onBack, onLoginSuccess }) {
               </div>
 
               <div className="space-y-1.5">
-                <label
-                  htmlFor="password"
-                  className="text-[11px] font-semibold text-emerald-700 uppercase tracking-[0.18em]"
-                >
+                <label htmlFor="password" className="text-[11px] font-semibold text-emerald-700 uppercase tracking-[0.18em]">
                   Password
                 </label>
                 <input
@@ -119,12 +103,10 @@ export default function LoginForm({ onBack, onLoginSuccess }) {
               >
                 {isSubmitting ? "Signing in..." : "Login"}
               </button>
-
             </form>
           </div>
-          </div>
         </div>
+      </div>
     </div>
   );
 }
-
