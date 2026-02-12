@@ -355,6 +355,7 @@ export default function LocationManagement({
   const [editingCell, setEditingCell] = useState(null); // { type: 'bay' | 'shelf' | 'row', bay?: number, shelfIndex?: number, rowKey?: number }
   const [editingValue, setEditingValue] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [warningMessage, setWarningMessage] = useState("");
 
   useEffect(() => {
     if (!selectedProfile) return;
@@ -372,6 +373,15 @@ export default function LocationManagement({
       return () => clearTimeout(timer);
     }
   }, [successMessage]);
+
+  useEffect(() => {
+    if (warningMessage) {
+      const timer = setTimeout(() => {
+        setWarningMessage("");
+      }, 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [warningMessage]);
 
   const showSuccess = (message) => {
     setSuccessMessage(message);
@@ -497,7 +507,7 @@ export default function LocationManagement({
     }
     const parts = addRowsInput.split(",").map((s) => s.trim()).filter(Boolean);
     if (parts.length === 0) {
-      setFormError("Enter at least one row label (e.g. R-6, T-5).");
+      setFormError("Enter at least one row label (e.g. R-6, R-5).");
       return false;
     }
     const existingIndices = Object.keys(draftRowLabels).map(Number).filter((k) => !Number.isNaN(k));
@@ -1097,12 +1107,12 @@ export default function LocationManagement({
                       </select>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[11px] font-semibold tracking-[0.18em] uppercase text-gray-700">Rows (e.g. R-6, T-5)</label>
+                      <label className="text-[11px] font-semibold tracking-[0.18em] uppercase text-gray-700">Rows</label>
                       <input
                         type="text"
                         value={addRowsInput}
                         onChange={(e) => setAddRowsInput(e.target.value)}
-                        placeholder="e.g. R-6, T-5"
+                        placeholder="e.g. R-6, R-5"
                         className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                       />
                     </div>
@@ -1133,8 +1143,11 @@ export default function LocationManagement({
                 <div className="w-1.5 h-1.5 rounded-full bg-sky-500 shadow-sm shadow-sky-500/50" />
                 Editable Block Layout
               </h3>
-              <p className="text-xs text-gray-600 bg-white/70 rounded-full px-3 py-1.5 border border-emerald-200/50 shadow-sm">✏️ Click to edit</p>
             </div>
+
+            <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+              Click on any bay header (B-1, B-2, etc.), shelf label (S-A, S-B, etc.), to edit directly. Changes are saved to draft. Click &ldquo;Save Changes&rdquo; to update the profile.
+            </p>
             
             {selectedProfile && (
               <div className="overflow-x-auto w-full">
@@ -1163,10 +1176,29 @@ export default function LocationManagement({
                                     value={editingValue}
                                     onChange={(e) => setEditingValue(e.target.value)}
                                     onBlur={() => {
-                                      const match = editingValue.match(/^B?-?(\d+)$/);
-                                      if (match) {
+                                      const trimmed = editingValue.trim();
+                                      if (!trimmed || trimmed === `B-${bay}`) {
+                                        // No change or empty — just close
+                                        setEditingCell(null);
+                                        setEditingValue("");
+                                        return;
+                                      }
+                                      const match = trimmed.match(/^B?-?(\d+)$/);
+                                      if (!match) {
+                                        // User entered non-numeric characters
+                                        const hasLetters = /[a-zA-Z]/.test(trimmed.replace(/^B-?/, ""));
+                                        if (hasLetters) {
+                                          setWarningMessage(`Change not saved — Bay requires a number, not letters. You entered "${trimmed}". Use a format like B-1 or B-7.`);
+                                        } else {
+                                          setWarningMessage(`Change not saved — Invalid bay value "${trimmed}". Bay must be a number (e.g., B-1, B-7).`);
+                                        }
+                                      } else {
                                         const newBay = parseInt(match[1], 10);
-                                        if (newBay !== bay && !draftShelvesByBay[newBay]) {
+                                        if (newBay === bay) {
+                                          // Same value, no change needed
+                                        } else if (draftShelvesByBay[newBay]) {
+                                          setWarningMessage(`Change not saved — Bay B-${newBay} already exists. Choose a different bay number.`);
+                                        } else {
                                           setDraftShelvesByBay((prev) => {
                                             const next = { ...prev };
                                             next[newBay] = prev[bay] || [];
@@ -1248,16 +1280,42 @@ export default function LocationManagement({
                                                 }
                                               }}
                                               onBlur={() => {
-                                                if (editingValue && /^S-[A-Z]$/.test(editingValue)) {
-                                                  setDraftShelvesByBay((prev) => {
-                                                    const next = { ...prev };
-                                                    const shelves = [...(next[bay] || [])];
-                                                    if (shelves[shelfIdx] !== undefined) {
-                                                      shelves[shelfIdx] = editingValue;
-                                                      next[bay] = shelves;
-                                                    }
-                                                    return next;
-                                                  });
+                                                const trimmed = editingValue.trim();
+                                                const originalLabel = (draftShelvesByBay[bay] || [])[shelfIdx];
+                                                if (!trimmed || trimmed === originalLabel) {
+                                                  // No change or empty — just close
+                                                  setEditingCell(null);
+                                                  setEditingValue("");
+                                                  return;
+                                                }
+                                                if (/^S-[A-Z]$/.test(trimmed)) {
+                                                  // Check for duplicates within the same bay
+                                                  const existingShelves = (draftShelvesByBay[bay] || []).filter((_, i) => i !== shelfIdx);
+                                                  if (existingShelves.includes(trimmed)) {
+                                                    setWarningMessage(`Change not saved — Shelf "${trimmed}" already exists in Bay B-${bay}. Each shelf label must be unique within a bay.`);
+                                                  } else {
+                                                    setDraftShelvesByBay((prev) => {
+                                                      const next = { ...prev };
+                                                      const shelves = [...(next[bay] || [])];
+                                                      if (shelves[shelfIdx] !== undefined) {
+                                                        shelves[shelfIdx] = trimmed;
+                                                        next[bay] = shelves;
+                                                      }
+                                                      return next;
+                                                    });
+                                                  }
+                                                } else {
+                                                  // Invalid format — provide specific guidance
+                                                  const afterPrefix = trimmed.replace(/^S-?/, "");
+                                                  const hasDigits = /\d/.test(afterPrefix);
+                                                  const tooLong = afterPrefix.length > 1;
+                                                  if (hasDigits) {
+                                                    setWarningMessage(`Change not saved — Shelf requires a letter (A-Z), not a number. You entered "${trimmed}". Use a format like S-A or S-B.`);
+                                                  } else if (tooLong) {
+                                                    setWarningMessage(`Change not saved — Shelf label must be "S-" followed by a single letter. You entered "${trimmed}". Try S-A, S-B, etc.`);
+                                                  } else {
+                                                    setWarningMessage(`Change not saved — Invalid shelf label "${trimmed}". Expected format: S-A (the prefix "S-" followed by one letter A-Z).`);
+                                                  }
                                                 }
                                                 setEditingCell(null);
                                                 setEditingValue("");
@@ -1316,11 +1374,35 @@ export default function LocationManagement({
                                             }
                                           }}
                                           onBlur={() => {
-                                            if (editingValue && /^R-.+$/.test(editingValue)) {
-                                              setDraftRowLabels((prev) => ({
-                                                ...prev,
-                                                [row]: editingValue,
-                                              }));
+                                            const trimmed = editingValue.trim();
+                                            const originalLabel = draftRowLabels[row];
+                                            if (!trimmed || trimmed === originalLabel) {
+                                              // No change or empty — just close
+                                              setEditingCell(null);
+                                              setEditingValue("");
+                                              return;
+                                            }
+                                            if (/^R-.+$/.test(trimmed)) {
+                                              // Check for duplicates
+                                              const existingLabels = Object.entries(draftRowLabels)
+                                                .filter(([k]) => Number(k) !== row)
+                                                .map(([, v]) => v);
+                                              if (existingLabels.includes(trimmed)) {
+                                                setWarningMessage(`Change not saved — Row label "${trimmed}" already exists. Each row label must be unique.`);
+                                              } else {
+                                                setDraftRowLabels((prev) => ({
+                                                  ...prev,
+                                                  [row]: trimmed,
+                                                }));
+                                              }
+                                            } else {
+                                              // Invalid — must start with R- and have something after
+                                              const afterPrefix = trimmed.replace(/^R-?/, "");
+                                              if (!afterPrefix) {
+                                                setWarningMessage(`Change not saved — Row label needs a value after "R-". You entered "${trimmed}". Use a format like R-1, R-2, or R-A.`);
+                                              } else {
+                                                setWarningMessage(`Change not saved — Invalid row label "${trimmed}". Row labels must start with "R-" (e.g., R-1, R-2). Try R-${afterPrefix} instead.`);
+                                              }
                                             }
                                             setEditingCell(null);
                                             setEditingValue("");
@@ -1369,9 +1451,7 @@ export default function LocationManagement({
               </div>
             )}
             
-            <p className="mt-3 text-[11px] text-gray-600">
-              Click on any bay header (B-1, B-2, etc.), shelf label (S-A, S-B, etc.), or row label (R-1, R-2, etc.) to edit directly. Changes are saved to draft. Click "Save Changes" to update the profile.
-            </p>
+           
           </div>
         </div>
       </div>
@@ -1390,6 +1470,32 @@ export default function LocationManagement({
               onClick={() => setSuccessMessage("")}
               className="flex-shrink-0 p-1 rounded-lg hover:bg-emerald-700/50 transition-colors"
               aria-label="Close"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {warningMessage && (
+        <div className="fixed top-4 right-4 z-[100] animate-in slide-in-from-top-2 fade-in duration-300">
+          <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl shadow-2xl border-2 border-amber-400/50 px-5 py-4 min-w-[300px] max-w-lg flex items-start gap-3">
+            <div className="flex-shrink-0 mt-0.5">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01M10.29 3.86l-8.4 14.31A1.73 1.73 0 003.42 21h17.16a1.73 1.73 0 001.53-2.83l-8.4-14.31a1.73 1.73 0 00-3.02 0z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-bold mb-0.5">Input Warning</p>
+              <p className="text-xs font-medium leading-relaxed opacity-95">{warningMessage}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setWarningMessage("")}
+              className="flex-shrink-0 p-1 rounded-lg hover:bg-amber-700/50 transition-colors"
+              aria-label="Close warning"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
