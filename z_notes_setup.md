@@ -67,7 +67,7 @@ This will:
 The installer is located at:
 
 ```
-release/CCRO Archive Locator System Setup 1.0.2.exe
+release/CCRO Archive Locator System Setup 2.1.0.exe
 ```
 
 ## Notes
@@ -137,6 +137,7 @@ release/CCRO Archive Locator System Setup 1.0.2.exe
 │   │   │   └── Sidebar.jsx
 │   │   ├── locations/
 │   │   │   ├── LocationManagement.jsx
+│   │   │   ├── LocationRack3D.jsx   3D rack visualization (Three.js)
 │   │   │   └── LocationResultLayout.jsx
 │   │   ├── locator/
 │   │   │   ├── DocumentLocator.jsx
@@ -174,6 +175,23 @@ release/CCRO Archive Locator System Setup 1.0.2.exe
 ├── build/                     Generated app icons (gitignored)
 ├── dist/                      Vite build output (gitignored)
 ├── release/                   Electron installer output (gitignored)
+├── index.html                 Vite HTML entry point
+├── tsconfig.json              TypeScript config (editor support)
 ├── package.json
 └── vite.config.mts
 ```
+
+## Tech Stack & Key Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| React 19, react-dom | UI framework |
+| Vite 7 | Dev server & bundler |
+| Tailwind CSS v4 | Utility-first styling |
+| Express 4 | Backend API server |
+| better-sqlite3 | SQLite database driver |
+| Electron 33 | Desktop app shell |
+| @react-three/fiber, @react-three/drei, three | 3D rack visualization |
+| @dnd-kit/core, @dnd-kit/sortable | Drag-and-drop interactions |
+| electron-builder | Windows installer packaging |
+| concurrently | Run multiple dev scripts in parallel |

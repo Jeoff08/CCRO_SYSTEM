@@ -32,6 +32,7 @@ export default function LocationResultLayout({
   title = "Location result",
   isPreview = false,
   accent = "emerald",
+  onFullscreen,
 }) {
   const matchCellRef = useRef(null);
   const [layoutView, setLayoutView] = useState("2d");
@@ -169,12 +170,26 @@ export default function LocationResultLayout({
       </div>
 
       {layoutView === "3d" && (
-        <LocationRack3D
-          shelfLettersByBay={shelfLettersByBay}
-          rowLabels={rowLabels}
-          highlight={hasResult ? { bay: resultBay, shelf: resultShelf, row: resultRow, box: resultBox } : null}
-          className="mb-2"
-        />
+        <div className="relative mb-2">
+          <LocationRack3D
+            shelfLettersByBay={shelfLettersByBay}
+            rowLabels={rowLabels}
+            highlight={hasResult ? { bay: resultBay, shelf: resultShelf, row: resultRow, box: resultBox } : null}
+          />
+          {onFullscreen && (
+            <button
+              type="button"
+              onClick={onFullscreen}
+              className="absolute top-3 right-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-xl transition-all duration-200 border border-white/30 bg-white/80 backdrop-blur-sm text-gray-700 hover:bg-white hover:border-emerald-300 hover:shadow-md shadow-sm z-10"
+              title="Open 3D view fullscreen"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+              </svg>
+              Fullscreen
+            </button>
+          )}
+        </div>
       )}
 
       {layoutView === "2d" && (

@@ -21,7 +21,7 @@ export default function DocumentLocator({
   const [touched, setTouched] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
-  const [show3DPreview, setShow3DPreview] = useState(false);
+  const [show3DFullscreen, setShow3DFullscreen] = useState(false);
 
   /* ── Derived filters ── */
   const boxesForType = useMemo(() => {
@@ -177,41 +177,6 @@ export default function DocumentLocator({
         </div>
       </form>
 
-      {/* 3D Rack Preview toggle */}
-      <div className="border-2 border-emerald-200/60 rounded-3xl bg-gradient-to-br from-white via-emerald-50/30 to-sky-50/20 p-5 md:p-6 shadow-lg shadow-emerald-100/50 hover:shadow-xl hover:shadow-emerald-200/50 transition-all duration-300">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-sky-500 shadow-sm shadow-sky-500/50" />
-            <h3 className="text-sm font-bold text-gray-900">3D Rack Preview</h3>
-            {result && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-100 rounded-full px-2 py-0.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Location highlighted
-              </span>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={() => setShow3DPreview((v) => !v)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-xl transition-all duration-200 border border-emerald-200 bg-white text-gray-700 hover:bg-emerald-50 hover:border-emerald-300 shadow-sm"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
-            </svg>
-            {show3DPreview ? "Hide 3D" : "Show 3D"}
-          </button>
-        </div>
-        {show3DPreview && (
-          <div className="mt-4">
-            <LocationRack3D
-              shelfLettersByBay={shelfLettersByBay}
-              rowLabels={rowLabels}
-              highlight={result && matchingBox ? { bay: matchingBox.bay, shelf: matchingBox.shelf, row: matchingBox.row, box: matchingBox.boxNumber } : null}
-            />
-          </div>
-        )}
-      </div>
-
       {touched && error && (
         <div className="animate-in slide-in-from-top-2 fade-in duration-300">
           <p className="text-xs text-red-700 bg-red-50 border-2 border-red-200 rounded-xl px-4 py-3 shadow-md">{error}</p>
@@ -226,7 +191,48 @@ export default function DocumentLocator({
             shelfLettersByBay={shelfLettersByBay}
             rowLabels={rowLabels}
             accent={certificateType === "COLB" ? "blue" : certificateType === "COM" ? "rose" : certificateType === "COD" ? "violet" : "emerald"}
+            onFullscreen={() => setShow3DFullscreen(true)}
           />
+        </div>
+      )}
+
+      {/* Fullscreen 3D Modal */}
+      {show3DFullscreen && (
+        <div className="fixed inset-0 z-[9999] flex flex-col bg-gradient-to-b from-gray-900 to-gray-950">
+          {/* Modal header bar */}
+          <div className="flex items-center justify-between px-5 py-3 bg-gray-900/90 backdrop-blur border-b border-white/10">
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50" />
+              <h3 className="text-sm font-bold text-white tracking-wide">3D Rack Preview</h3>
+              {result && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-300 bg-emerald-900/50 rounded-full px-2.5 py-0.5 border border-emerald-700/50">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Location highlighted
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setShow3DFullscreen(false)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 bg-white/10 text-white hover:bg-white/20 border border-white/10 hover:border-white/20"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Close
+            </button>
+          </div>
+
+          {/* 3D Canvas fills remaining space */}
+          <div className="flex-1 relative">
+            <LocationRack3D
+              shelfLettersByBay={shelfLettersByBay}
+              rowLabels={rowLabels}
+              highlight={result && matchingBox ? { bay: matchingBox.bay, shelf: matchingBox.shelf, row: matchingBox.row, box: matchingBox.boxNumber, info: { certificateType: matchingBox.certificateType, year: matchingBox.year, yearTo: matchingBox.yearTo, registryRange: matchingBox.registryRange } } : null}
+              className="!rounded-none !border-0 !shadow-none"
+              style={{ height: "100%" }}
+            />
+          </div>
         </div>
       )}
     </div>
