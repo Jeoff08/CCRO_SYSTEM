@@ -1,113 +1,197 @@
-# CCRO Archive Locator System
+# CCRO Archive Locator System — Setup Guide (After Clone)
 
-A modern document locator system for the City Civil Registrar Office (CCRO) archive management.
+## Prerequisites
 
-## Features
+- **Node.js** v18 or higher — [https://nodejs.org](https://nodejs.org)
+- **npm** (comes with Node.js)
+- **Windows OS** (for Electron build)
 
-- **Document Locator**: Search for physical boxes using certificate type, year, and registry number
-- **Box Management**: Register and maintain box records
-- **Location Management**: Configure location profiles to match physical archive layout
-- **Activity Logging**: Track all searches, logins, and box changes
-- **Database Backend**: SQLite database using better-sqlite3 for persistent storage
+## Step 1: Install Dependencies
 
-## Tech Stack
+Open a terminal in the project root folder, then run:
 
-- **Frontend**: React 19, Vite, Tailwind CSS
-- **Backend**: Node.js, Express
-- **Database**: SQLite (better-sqlite3)
-
-## Setup
-
-### Prerequisites
-
-- Node.js (v18 or higher)
-- npm
-
-### Installation
-
-1. Install dependencies:
 ```bash
 npm install
 ```
 
-2. Start the development server:
+> This will also automatically run `postinstall` to rebuild native Electron dependencies (better-sqlite3).
+
+## Step 2: Run in Development Mode
+
+### Option A — Web only (frontend + backend, no Electron window)
+
 ```bash
-# Start both frontend and backend
 npm run dev:all
-
-# Or start them separately:
-# Frontend only
-npm run dev
-
-# Backend only
-npm run dev:server
 ```
 
-The frontend will be available at `http://localhost:5173` and the backend API at `http://localhost:3001`.
+- Frontend → `http://localhost:5173`
+- Backend API → `http://localhost:3001`
 
-### Default Credentials
+### Option B — Electron desktop app (full dev mode)
 
-- Username: `admin`
-- Password: `ccro123`
+```bash
+npm run electron:dev
+```
 
-## Database
+This starts Vite, waits for it to be ready, then opens the Electron window. The Express API server starts automatically inside Electron's main process.
 
-The database file (`ccro-archive.db`) will be automatically created in the project root on first run. The schema includes:
+### Option C — Start frontend and backend separately
 
-- **users**: User accounts
-- **boxes**: Box records
-- **location_profiles**: Location configuration profiles
-- **activity_logs**: Activity tracking
+```bash
+npm run dev          # Vite frontend on port 5173
+npm run dev:server   # Express API on port 3001
+```
 
-## API Endpoints
+## Step 3: Login with Default Credentials
 
-### Boxes
-- `GET /api/boxes` - Get all boxes
-- `GET /api/boxes/:id` - Get box by ID
-- `POST /api/boxes` - Create box
-- `PUT /api/boxes/:id` - Update box
-- `DELETE /api/boxes/:id` - Delete box
+| Field    | Value     |
+|----------|-----------|
+| Username | `admin`   |
+| Password | `ccro123` |
 
-### Location Profiles
-- `GET /api/location-profiles` - Get all profiles
-- `GET /api/location-profiles/active` - Get active profile
-- `GET /api/location-profiles/:id` - Get profile by ID
-- `POST /api/location-profiles` - Create or update profile
-- `PUT /api/location-profiles/:id/active` - Set active profile
-- `DELETE /api/location-profiles/:id` - Delete profile
+The SQLite database file (`ccro-archive.db`) is created automatically in the project root on first run.
 
-### Activity Logs
-- `GET /api/activity-logs` - Get all logs
-- `POST /api/activity-logs` - Create log
-- `GET /api/activity-logs/user/:userId` - Get logs by user
+## Step 4: Build for Production (Windows Installer)
 
-### Authentication
-- `POST /api/auth/login` - Login
-- `GET /api/auth/user/:id` - Get user by ID
+```bash
+npm run electron:build
+```
+
+This will:
+
+1. Convert the app icon (JPG → PNG → ICO)
+2. Build the Vite frontend (output in `dist/`)
+3. Package everything with electron-builder (output in `release/`)
+4. Patch the icon onto the executable
+
+The installer is located at:
+
+```
+release/CCRO Archive Locator System Setup 2.1.0.exe
+```
+
+## Notes
+
+- The `.gitignore` excludes `node_modules/`, `*.db`, `dist/`, `build/`, and `release/` — so those are regenerated after clone.
+- **No `.env` file is required.** The only env var used is `CCRO_DB_PATH`, which Electron sets automatically in production to store the DB in the user's AppData folder.
+- The Express API runs on port **3001** by default. You can override it with the `PORT` environment variable.
+
+## Available Scripts
+
+| Script                  | Description                              |
+|-------------------------|------------------------------------------|
+| `npm run dev`           | Vite dev server (frontend only)          |
+| `npm run dev:server`    | Express API server (backend only)        |
+| `npm run dev:all`       | Both frontend + backend together         |
+| `npm run electron:dev`  | Full Electron dev mode                   |
+| `npm run build`         | Vite production build                    |
+| `npm run electron:build`| Full Windows installer build             |
 
 ## Project Structure
 
 ```
-.
-├── server/              # Backend server
-│   ├── db.js           # Database setup
-│   ├── index.js        # Express server
-│   └── routes/         # API routes
-├── src/                # Frontend React app
-│   ├── components/     # React components
-│   ├── api.js          # API client
-│   └── App.jsx         # Main app component
-└── package.json
+├── electron/                  Electron main process
+│   ├── main.cjs               Main process entry
+│   ├── preload.cjs            Preload script (IPC bridge)
+│   └── dev-runner.cjs         Dev mode launcher
+├── server/                    Express backend + SQLite
+│   ├── index.js               Express server entry
+│   ├── db/                    Database layer
+│   │   ├── index.js           DB barrel export
+│   │   ├── connection.js      SQLite connection setup
+│   │   ├── schema.js          Table definitions
+│   │   ├── migrations.js      Schema migrations
+│   │   └── seeds.js           Default seed data
+│   ├── lib/                   Shared server utilities
+│   │   └── transforms.js      Data transform helpers
+│   ├── middleware/             Express middleware
+│   │   └── errorHandler.js    Global error handler
+│   └── routes/                API route handlers
+│       ├── auth.js
+│       ├── boxes.js
+│       ├── locationProfiles.js
+│       └── activityLogs.js
+├── src/                       React frontend (Vite + Tailwind CSS v4)
+│   ├── App.jsx                Main app component
+│   ├── main.jsx               Entry point
+│   ├── style.css              Global styles
+│   ├── api/                   API client modules
+│   │   ├── index.js           API barrel export
+│   │   ├── client.js          Base fetch/request helper
+│   │   ├── auth.js            Auth API calls
+│   │   ├── boxes.js           Box API calls
+│   │   ├── locationProfiles.js  Location profile API calls
+│   │   └── activityLogs.js    Activity log API calls
+│   ├── components/            React components
+│   │   ├── auth/
+│   │   │   └── LoginForm.jsx
+│   │   ├── boxes/
+│   │   │   ├── BoxManagement.jsx
+│   │   │   ├── BoxForm.jsx
+│   │   │   ├── ConfirmBoxStep.jsx
+│   │   │   └── DeleteBoxModal.jsx
+│   │   ├── dashboard/
+│   │   │   ├── Dashboard.jsx
+│   │   │   └── DashboardHome.jsx
+│   │   ├── layout/
+│   │   │   └── Sidebar.jsx
+│   │   ├── locations/
+│   │   │   ├── LocationManagement.jsx
+│   │   │   ├── LocationRack3D.jsx   3D rack visualization (Three.js)
+│   │   │   └── LocationResultLayout.jsx
+│   │   ├── locator/
+│   │   │   ├── DocumentLocator.jsx
+│   │   │   └── YearCombobox.jsx
+│   │   ├── shared/
+│   │   │   └── CertificateBadge.jsx
+│   │   └── ui/
+│   │       ├── index.js       UI barrel export
+│   │       ├── Field.jsx
+│   │       ├── Label.jsx
+│   │       ├── Modal.jsx
+│   │       └── Toast.jsx
+│   ├── constants/             Shared constants
+│   │   ├── index.js           Constants barrel export
+│   │   ├── certificates.js    Certificate type definitions
+│   │   ├── dates.js           Date/year helpers
+│   │   └── locations.js       Location-related constants
+│   ├── hooks/                 Custom React hooks
+│   │   ├── index.js           Hooks barrel export
+│   │   ├── useBoxes.js        Box data hook
+│   │   ├── useLocationProfiles.js  Location data hook
+│   │   └── useActivityLog.js  Activity log hook
+│   └── utils/                 Frontend utilities
+│       ├── index.js           Utils barrel export
+│       ├── formatting.js      Display formatting helpers
+│       ├── location.js        Location logic helpers
+│       └── registry.js        Registry number utilities
+├── public/                    Static assets
+│   ├── logo-rm.png            App logo (transparent)
+│   ├── logo-shortcut.png      Shortcut icon
+│   └── vite.svg               Vite default asset
+├── scripts/                   Build utilities
+│   ├── convert-icon.cjs       Icon conversion (JPG → ICO)
+│   └── patch-icon.cjs         Patch icon onto built exe
+├── build/                     Generated app icons (gitignored)
+├── dist/                      Vite build output (gitignored)
+├── release/                   Electron installer output (gitignored)
+├── index.html                 Vite HTML entry point
+├── tsconfig.json              TypeScript config (editor support)
+├── package.json
+└── vite.config.mts
 ```
 
-## Development
+## Tech Stack & Key Dependencies
 
-The project uses:
-- **Vite** for frontend development
-- **Express** for backend API
-- **better-sqlite3** for database operations
-
-## License
-
-Private - CCRO Internal Use Only
-
+| Package | Purpose |
+|---------|---------|
+| React 19, react-dom | UI framework |
+| Vite 7 | Dev server & bundler |
+| Tailwind CSS v4 | Utility-first styling |
+| Express 4 | Backend API server |
+| better-sqlite3 | SQLite database driver |
+| Electron 33 | Desktop app shell |
+| @react-three/fiber, @react-three/drei, three | 3D rack visualization |
+| @dnd-kit/core, @dnd-kit/sortable | Drag-and-drop interactions |
+| electron-builder | Windows installer packaging |
+| concurrently | Run multiple dev scripts in parallel |
