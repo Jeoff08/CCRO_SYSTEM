@@ -96,7 +96,7 @@ export default function BoxForm({
       return;
     }
 
-    if (!/^\d{1,3}$/.test(String(boxNumber))) {
+    if (!/^\d+$/.test(String(boxNumber))) {
       setError("Box number must be numeric.");
       return;
     }

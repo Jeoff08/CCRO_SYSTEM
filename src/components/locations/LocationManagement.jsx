@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { Modal, Toast } from "../ui/index.js";
 import { DEFAULT_ROW_LABELS, DEFAULT_SHELF_LETTERS_BY_BAY } from "../../constants/index.js";
 import { normalizeShelvesInput, validateShelvesByBay, makeId } from "../../utils/index.js";
@@ -34,6 +34,22 @@ export default function LocationManagement({
   const [draftShelvesByBay, setDraftShelvesByBay] = useState(DEFAULT_SHELF_LETTERS_BY_BAY);
   const [draftRowLabels, setDraftRowLabels] = useState(DEFAULT_ROW_LABELS);
   const [formError, setFormError] = useState("");
+
+  /* ── Dirty-state tracking ── */
+  const isDirty = useMemo(() => {
+    if (!selectedProfile) return false;
+    const savedName = selectedProfile.name || "";
+    const savedShelves = selectedProfile.shelfLettersByBay || DEFAULT_SHELF_LETTERS_BY_BAY;
+    const savedRows = selectedProfile.rowLabels || DEFAULT_ROW_LABELS;
+    if (draftName !== savedName) return true;
+    if (JSON.stringify(draftShelvesByBay) !== JSON.stringify(savedShelves)) return true;
+    if (JSON.stringify(draftRowLabels) !== JSON.stringify(savedRows)) return true;
+    return false;
+  }, [selectedProfile, draftName, draftShelvesByBay, draftRowLabels]);
+
+  useEffect(() => {
+    if (onDirtyChange) onDirtyChange(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   /* ── Modal flags ── */
   const [addBayModalOpen, setAddBayModalOpen] = useState(false);
@@ -75,52 +91,6 @@ export default function LocationManagement({
     setFormError("");
   }, [selectedProfile]);
 
-  /* ── Unsaved changes detection ── */
-  const hasUnsavedChanges = useMemo(() => {
-    if (!selectedProfile) return false;
-    const savedName = selectedProfile.name || "";
-    const savedShelves = selectedProfile.shelfLettersByBay || DEFAULT_SHELF_LETTERS_BY_BAY;
-    const savedRows = selectedProfile.rowLabels || DEFAULT_ROW_LABELS;
-    if (draftName !== savedName) return true;
-    if (JSON.stringify(draftShelvesByBay) !== JSON.stringify(savedShelves)) return true;
-    if (JSON.stringify(draftRowLabels) !== JSON.stringify(savedRows)) return true;
-    return false;
-  }, [selectedProfile, draftName, draftShelvesByBay, draftRowLabels]);
-
-  /* Notify parent of dirty state */
-  useEffect(() => {
-    if (onDirtyChange) onDirtyChange(hasUnsavedChanges);
-  }, [hasUnsavedChanges, onDirtyChange]);
-
-  /* Expose save function via ref so parent can trigger save from the unsaved-changes modal */
-  useEffect(() => {
-    if (saveRef) saveRef.current = handleSaveImperative;
-  });
-  const handleSaveImperative = useCallback(() => {
-    if (!selectedProfile) return;
-    const name = (draftName && draftName.trim()) || selectedProfile.name || "Profile";
-    const normalized = {};
-    const bayKeys = Object.keys(draftShelvesByBay).map(Number).filter((b) => !Number.isNaN(b));
-    for (const bay of bayKeys) {
-      const list = (draftShelvesByBay[bay] || []).map((s) => String(s).toUpperCase());
-      if (list.length) normalized[bay] = list;
-    }
-    const errors = validateShelvesByBay({ ...DEFAULT_SHELF_LETTERS_BY_BAY, ...normalized });
-    if (errors.length) { setFormError(errors[0]); return false; }
-    onUpsertProfile({ ...selectedProfile, name, shelfLettersByBay: normalized, rowLabels: draftRowLabels, updatedAt: new Date().toISOString() });
-    setFormError("");
-    return true;
-  }, [selectedProfile, draftName, draftShelvesByBay, draftRowLabels, onUpsertProfile]);
-
-  /* Browser / Electron close guard */
-  useEffect(() => {
-    const handler = (e) => {
-      if (hasUnsavedChanges) { e.preventDefault(); e.returnValue = ""; }
-    };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [hasUnsavedChanges]);
-
   /* ── Auto-dismiss toasts ── */
   useEffect(() => {
     if (successMessage) {
@@ -147,8 +117,8 @@ export default function LocationManagement({
   );
 
   /* ── Handlers: save / create / delete profile ── */
-  const handleSave = () => {
-    if (!selectedProfile) return;
+  const handleSave = useCallback(() => {
+    if (!selectedProfile) return false;
     const name = (draftName && draftName.trim()) || selectedProfile.name || "Profile";
     const normalized = {};
     const bayKeys = Object.keys(draftShelvesByBay).map(Number).filter((b) => !Number.isNaN(b));
@@ -157,11 +127,17 @@ export default function LocationManagement({
       if (list.length) normalized[bay] = list;
     }
     const errors = validateShelvesByBay({ ...DEFAULT_SHELF_LETTERS_BY_BAY, ...normalized });
-    if (errors.length) { setFormError(errors[0]); return; }
+    if (errors.length) { setFormError(errors[0]); return false; }
     onUpsertProfile({ ...selectedProfile, name, shelfLettersByBay: normalized, rowLabels: draftRowLabels, updatedAt: new Date().toISOString() });
     setFormError("");
     setSuccessMessage("Changes saved successfully!");
-  };
+    return true;
+  }, [selectedProfile, draftName, draftShelvesByBay, draftRowLabels, onUpsertProfile]);
+
+  /* ── Expose save for parent (unsaved-changes guard) ── */
+  useEffect(() => {
+    if (saveRef) saveRef.current = handleSave;
+  }, [saveRef, handleSave]);
 
   const handleDelete = () => {
     if (!selectedProfile) return;

@@ -201,14 +201,36 @@ export default function DocumentLocator({
         <div className="fixed inset-0 z-[9999] flex flex-col bg-gradient-to-b from-gray-900 to-gray-950">
           {/* Modal header bar */}
           <div className="flex items-center justify-between px-5 py-3 bg-gray-900/90 backdrop-blur border-b border-white/10">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50" />
               <h3 className="text-sm font-bold text-white tracking-wide">3D Rack Preview</h3>
-              {result && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-300 bg-emerald-900/50 rounded-full px-2.5 py-0.5 border border-emerald-700/50">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Location highlighted
-                </span>
+              {result && matchingBox && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-300 bg-emerald-900/50 rounded-full px-2.5 py-0.5 border border-emerald-700/50">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Location highlighted
+                  </span>
+                  <span className="text-white/30">|</span>
+                  <span className="text-[11px] font-semibold text-white/90">
+                    <span className="text-emerald-300">B-{matchingBox.bay}</span>
+                    <span className="text-white/30 mx-1">·</span>
+                    <span className="text-amber-300">S-{shelfLettersByBay[matchingBox.bay]?.[matchingBox.shelf - 1] || matchingBox.shelf}</span>
+                    <span className="text-white/30 mx-1">·</span>
+                    <span className="text-gray-300">{rowLabels[matchingBox.row] || `R-${matchingBox.row}`}</span>
+                    <span className="text-white/30 mx-1">·</span>
+                    <span className="text-red-300">Box #{matchingBox.boxNumber}</span>
+                  </span>
+                  {matchingBox.certificateType && (
+                    <>
+                      <span className="text-white/30">|</span>
+                      <span className="text-[10px] font-medium text-sky-300 bg-sky-900/40 rounded-full px-2 py-0.5 border border-sky-700/40">
+                        {matchingBox.certificateType === "COLB" ? "Birth Cert" : matchingBox.certificateType === "COM" ? "Marriage Cert" : matchingBox.certificateType === "COD" ? "Death Cert" : matchingBox.certificateType}
+                        {matchingBox.year ? ` · ${matchingBox.year}${matchingBox.yearTo && matchingBox.yearTo !== matchingBox.year ? `–${matchingBox.yearTo}` : ""}` : ""}
+                        {matchingBox.registryRange ? ` · #${matchingBox.registryRange}` : ""}
+                      </span>
+                    </>
+                  )}
+                </div>
               )}
             </div>
             <button
