@@ -52,7 +52,7 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout }) {
 
   return (
     <aside
-      className={`shrink-0 flex flex-col py-4 transition-all duration-300 ease-in-out shadow-lg bg-gray-100 ${
+      className={`sticky top-0 h-full shrink-0 flex flex-col py-4 overflow-hidden transition-all duration-300 ease-in-out shadow-lg bg-gray-100 ${
         collapsed ? "w-[68px]" : "w-60"
       }`}
     >
@@ -71,7 +71,7 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout }) {
         </button>
       </div>
 
-      <nav className="flex flex-col gap-1.5 px-2.5 text-sm font-medium flex-1">
+      <nav className="flex flex-col gap-1.5 px-2.5 text-sm font-medium flex-1 min-h-0">
         {SIDEBAR_ITEMS.map((item) => {
           const isActive = activeTab === item.id;
           const isHovered = hoveredItem === item.id;

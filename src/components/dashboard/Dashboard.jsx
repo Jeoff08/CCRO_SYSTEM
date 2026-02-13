@@ -99,9 +99,9 @@ export default function Dashboard({
   }, []);
 
   return (
-    <div className="min-h-screen bg-white/50">
+    <div className="h-screen flex flex-col overflow-hidden bg-white/50">
       {/* Top header bar */}
-      <header className="shadow-sm bg-emerald-700">
+      <header className="shrink-0 shadow-sm bg-emerald-700">
         <div className="flex items-center w-full">
           <div className="shrink-0 flex items-center px-3 py-3 gap-2 w-60">
             <img
@@ -129,10 +129,10 @@ export default function Dashboard({
         </div>
       </header>
 
-      <div className="flex min-h-[calc(100vh-57px)]">
+      <div className="flex flex-1 min-h-0">
         <Sidebar activeTab={activeTab} setActiveTab={guardedSetActiveTab} onLogout={guardedLogout} />
 
-        <main className="flex-1 overflow-auto px-4 py-6 min-w-0 bg-white/50">
+        <main className="flex-1 min-h-0 overflow-auto px-4 py-6 min-w-0 bg-white/50">
           <section
             className="w-full mx-auto bg-white rounded-3xl p-5 md:p-6"
             style={{ maxWidth: "min(80rem, calc(100vw - 18rem))" }}

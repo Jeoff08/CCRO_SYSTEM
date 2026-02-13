@@ -13,6 +13,7 @@
     "electron:dev": "node electron/dev-runner.cjs",
     "build": "vite build",
     "electron:build": "node scripts/convert-icon.cjs && vite build && electron-builder --win --dir && node scripts/patch-icon.cjs && electron-builder --win --prepackaged release/win-unpacked",
+    "installer": "npm run electron:build",
     "preview": "vite preview",
     "postinstall": "electron-builder install-app-deps"
   },
