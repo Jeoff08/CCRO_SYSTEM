@@ -115,7 +115,7 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout }) {
         })}
       </nav>
 
-      <div className="shrink-0 px-2.5 pt-4 mt-2">
+      <div className="shrink-0 px-2.5 pt-4 mt-2 mb-3">
         <button
           type="button"
           onClick={onLogout}

@@ -57,6 +57,7 @@ export default function LocationManagement({
   const [addRowsModalOpen, setAddRowsModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
   const [deleteMode, setDeleteMode] = useState("bay");
 
   /* ── Modal inputs ── */
@@ -134,6 +135,16 @@ export default function LocationManagement({
     return true;
   }, [selectedProfile, draftName, draftShelvesByBay, draftRowLabels, onUpsertProfile]);
 
+  const handleSaveClick = useCallback(() => {
+    if (!selectedProfile) return;
+    setFormError("");
+    if (!isDirty) {
+      setWarningMessage("No changes to save. Everything is already up to date.");
+      return;
+    }
+    setSaveConfirmOpen(true);
+  }, [selectedProfile, isDirty]);
+
   /* ── Expose save for parent (unsaved-changes guard) ── */
   useEffect(() => {
     if (saveRef) saveRef.current = handleSave;
@@ -152,7 +163,19 @@ export default function LocationManagement({
     const num = addBayNumber.trim() ? parseInt(addBayNumber.trim(), 10) : null;
     if (num == null || Number.isNaN(num) || num < 1) { setFormError("Enter a valid bay number (e.g. 7)."); return false; }
     if (draftShelvesByBay[num]) { setFormError(`Bay ${num} already exists.`); return false; }
-    setDraftShelvesByBay((prev) => ({ ...prev, [num]: [] }));
+    const existingBays = Object.keys(draftShelvesByBay).map(Number).filter((b) => !Number.isNaN(b)).sort((a, b) => a - b);
+    const expectedNext = existingBays.length === 0 ? 1 : Math.max(...existingBays) + 1;
+    if (num !== expectedNext) {
+      setFormError(`Bay numbers must be sequential. Expected B-${expectedNext} (next in sequence).`);
+      return false;
+    }
+    setDraftShelvesByBay((prev) => {
+      const next = { ...prev, [num]: [] };
+      const sortedKeys = Object.keys(next).map(Number).filter((b) => !Number.isNaN(b)).sort((a, b) => a - b);
+      const sorted = {};
+      sortedKeys.forEach((key) => { sorted[key] = next[key]; });
+      return sorted;
+    });
     setAddBayNumber("");
     setFormError("");
     setSuccessMessage(`Bay B-${num} added successfully!`);
@@ -164,9 +187,60 @@ export default function LocationManagement({
     if (bay == null || Number.isNaN(bay) || !draftShelvesByBay[bay]) { setFormError("Select a bay."); return false; }
     const letters = normalizeShelvesInput(addShelfLetters);
     if (letters.length === 0) { setFormError("Enter at least one shelf letter (e.g. S-A, S-B)."); return false; }
-    const existing = draftShelvesByBay[bay] || [];
+    const existing = (draftShelvesByBay[bay] || []).sort((a, b) => a.localeCompare(b));
+    // Validate sequential order
+    const lastShelf = existing.length > 0 ? existing[existing.length - 1] : null;
+    if (lastShelf) {
+      const lastLetter = lastShelf.match(/^S-([A-Z])$/)?.[1];
+      if (lastLetter) {
+        const expectedNextLetterCode = lastLetter.charCodeAt(0) + 1;
+        if (expectedNextLetterCode > 90) { // Z is 90
+          setFormError("Cannot add more shelves. Maximum shelf letter (S-Z) reached.");
+          return false;
+        }
+        const expectedNextShelf = `S-${String.fromCharCode(expectedNextLetterCode)}`;
+        // Check if first letter matches expected next
+        if (letters[0] !== expectedNextShelf) {
+          setFormError(`Shelves must be sequential. Expected ${expectedNextShelf} (next in sequence after ${lastShelf}).`);
+          return false;
+        }
+        // Validate all letters are sequential
+        for (let i = 0; i < letters.length; i++) {
+          const expectedLetterCode = expectedNextLetterCode + i;
+          if (expectedLetterCode > 90) {
+            setFormError(`Cannot add more shelves. Maximum shelf letter (S-Z) reached.`);
+            return false;
+          }
+          const expectedShelf = `S-${String.fromCharCode(expectedLetterCode)}`;
+          if (letters[i] !== expectedShelf) {
+            setFormError(`Shelves must be sequential. Expected ${expectedShelf} at position ${i + 1}.`);
+            return false;
+          }
+        }
+      }
+    } else {
+      // First shelf must be S-A
+      if (letters[0] !== "S-A") {
+        setFormError("Shelves must start with S-A. Expected S-A (first shelf).");
+        return false;
+      }
+      // Validate all letters are sequential starting from A
+      for (let i = 0; i < letters.length; i++) {
+        const expectedLetterCode = 65 + i; // A is 65
+        if (expectedLetterCode > 90) {
+          setFormError(`Cannot add more shelves. Maximum shelf letter (S-Z) reached.`);
+          return false;
+        }
+        const expectedShelf = `S-${String.fromCharCode(expectedLetterCode)}`;
+        if (letters[i] !== expectedShelf) {
+          setFormError(`Shelves must be sequential. Expected ${expectedShelf} at position ${i + 1}.`);
+          return false;
+        }
+      }
+    }
     const combined = [...existing];
     letters.forEach((l) => { if (!combined.includes(l)) combined.push(l); });
+    combined.sort((a, b) => a.localeCompare(b));
     setDraftShelvesByBay((prev) => ({ ...prev, [bay]: combined }));
     setAddShelfLetters("");
     setFormError("");
@@ -183,11 +257,50 @@ export default function LocationManagement({
     if (parts.length === 0) { setFormError("Enter at least one row label (e.g. R-6, R-5)."); return false; }
     const existingIndices = Object.keys(draftRowLabels).map(Number).filter((k) => !Number.isNaN(k));
     const maxIndex = existingIndices.length ? Math.max(...existingIndices) : 0;
+    const expectedNext = maxIndex + 1;
+    // Extract numeric part from existing row labels to determine sequence
+    const existingRowNumbers = Object.values(draftRowLabels)
+      .map((label) => {
+        const match = label.match(/^R-(\d+)$/);
+        return match ? parseInt(match[1], 10) : null;
+      })
+      .filter((n) => n != null)
+      .sort((a, b) => a - b);
+    const maxRowNumber = existingRowNumbers.length > 0 ? Math.max(...existingRowNumbers) : 0;
+    const expectedNextRowNumber = maxRowNumber + 1;
+    // Validate that the first row being added matches the expected next number
+    const firstPart = parts[0];
+    const firstNormalized = /^R-.+$/.test(firstPart) ? firstPart : `R-${firstPart}`;
+    const firstMatch = firstNormalized.match(/^R-(\d+)$/);
+    if (!firstMatch) {
+      setFormError(`Row labels must be numeric (e.g. R-${expectedNextRowNumber}).`);
+      return false;
+    }
+    const firstRowNumber = parseInt(firstMatch[1], 10);
+    if (firstRowNumber !== expectedNextRowNumber) {
+      setFormError(`Rows must be sequential. Expected R-${expectedNextRowNumber} (next in sequence).`);
+      return false;
+    }
+    // Validate all rows are sequential
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      const normalized = /^R-.+$/.test(part) ? part : `R-${part}`;
+      const match = normalized.match(/^R-(\d+)$/);
+      if (!match) {
+        setFormError(`Row labels must be numeric (e.g. R-${expectedNextRowNumber + i}).`);
+        return false;
+      }
+      const rowNumber = parseInt(match[1], 10);
+      if (rowNumber !== expectedNextRowNumber + i) {
+        setFormError(`Rows must be sequential. Expected R-${expectedNextRowNumber + i} at position ${i + 1}.`);
+        return false;
+      }
+    }
     const labels = { ...draftRowLabels };
     const normalizedLabels = [];
     parts.forEach((label, i) => {
       const normalized = /^R-.+$/.test(label) ? label : `R-${label}`;
-      labels[maxIndex + 1 + i] = normalized;
+      labels[expectedNext + i] = normalized;
       normalizedLabels.push(normalized);
     });
     setDraftRowLabels(labels);
@@ -257,6 +370,7 @@ export default function LocationManagement({
     setAddRowsModalOpen(false);
     setDeleteModalOpen(false);
     setDeleteConfirmOpen(false);
+    setSaveConfirmOpen(false);
     setFormError("");
   };
 
@@ -269,8 +383,63 @@ export default function LocationManagement({
     else {
       const newBay = parseInt(match[1], 10);
       if (newBay !== bay) {
-        if (draftShelvesByBay[newBay]) setWarningMessage(`Bay B-${newBay} already exists.`);
-        else setDraftShelvesByBay((prev) => { const next = { ...prev }; next[newBay] = prev[bay] || []; delete next[bay]; return next; });
+        if (draftShelvesByBay[newBay]) {
+          setWarningMessage(`Bay B-${newBay} already exists.`);
+        } else {
+          // Check if the new bay number maintains sequential order
+          const existingBays = Object.keys(draftShelvesByBay)
+            .map(Number)
+            .filter((b) => !Number.isNaN(b) && b !== bay)
+            .sort((a, b) => a - b);
+          const minBay = existingBays.length > 0 ? Math.min(...existingBays) : null;
+          const maxBay = existingBays.length > 0 ? Math.max(...existingBays) : null;
+          
+          // Check if newBay creates a gap or is out of sequence
+          if (existingBays.length > 0) {
+            // Check if newBay is within the existing range
+            if (newBay < minBay || newBay > maxBay + 1) {
+              setWarningMessage(`Bay numbers must be sequential. B-${newBay} would create a gap. Expected a number between B-${minBay} and B-${maxBay + 1}.`);
+            } else {
+              // Check for gaps in the sequence
+              const allBays = [...existingBays, newBay].sort((a, b) => a - b);
+              let hasGap = false;
+              for (let i = 0; i < allBays.length - 1; i++) {
+                if (allBays[i + 1] - allBays[i] > 1) {
+                  hasGap = true;
+                  break;
+                }
+              }
+              if (hasGap) {
+                setWarningMessage(`Bay numbers must be sequential without gaps. B-${newBay} would create a gap in the sequence.`);
+              } else {
+                setDraftShelvesByBay((prev) => {
+                  const next = { ...prev };
+                  next[newBay] = prev[bay] || [];
+                  delete next[bay];
+                  const sortedKeys = Object.keys(next).map(Number).filter((b) => !Number.isNaN(b)).sort((a, b) => a - b);
+                  const sorted = {};
+                  sortedKeys.forEach((key) => { sorted[key] = next[key]; });
+                  return sorted;
+                });
+              }
+            }
+          } else {
+            // Only one bay, must be B-1
+            if (newBay !== 1) {
+              setWarningMessage(`Bay numbers must start with B-1.`);
+            } else {
+              setDraftShelvesByBay((prev) => {
+                const next = { ...prev };
+                next[newBay] = prev[bay] || [];
+                delete next[bay];
+                const sortedKeys = Object.keys(next).map(Number).filter((b) => !Number.isNaN(b)).sort((a, b) => a - b);
+                const sorted = {};
+                sortedKeys.forEach((key) => { sorted[key] = next[key]; });
+                return sorted;
+              });
+            }
+          }
+        }
       }
     }
     setEditingCell(null); setEditingValue("");
@@ -282,8 +451,53 @@ export default function LocationManagement({
     if (!trimmed || trimmed === originalLabel) { setEditingCell(null); setEditingValue(""); return; }
     if (/^S-[A-Z]$/.test(trimmed)) {
       const existing = (draftShelvesByBay[bay] || []).filter((_, i) => i !== shelfIdx);
-      if (existing.includes(trimmed)) setWarningMessage(`Shelf "${trimmed}" already exists in Bay B-${bay}.`);
-      else setDraftShelvesByBay((prev) => { const next = { ...prev }; const s = [...(next[bay] || [])]; if (s[shelfIdx] !== undefined) { s[shelfIdx] = trimmed; next[bay] = s; } return next; });
+      if (existing.includes(trimmed)) {
+        setWarningMessage(`Shelf "${trimmed}" already exists in Bay B-${bay}.`);
+      } else {
+        // Check if the new shelf maintains sequential alphabetical order
+        const existingSorted = [...existing].sort((a, b) => a.localeCompare(b));
+        const newLetter = trimmed.match(/^S-([A-Z])$/)?.[1];
+        if (newLetter) {
+          const newLetterCode = newLetter.charCodeAt(0);
+          const existingLetters = existingSorted.map((s) => s.match(/^S-([A-Z])$/)?.[1]).filter(Boolean);
+          
+          if (existingLetters.length === 0) {
+            // Only one shelf, must be S-A
+            if (trimmed !== "S-A") {
+              setWarningMessage(`Shelves must start with S-A.`);
+            } else {
+              setDraftShelvesByBay((prev) => { const next = { ...prev }; const s = [...(next[bay] || [])]; if (s[shelfIdx] !== undefined) { s[shelfIdx] = trimmed; s.sort((a, b) => a.localeCompare(b)); next[bay] = s; } return next; });
+            }
+          } else {
+            // Check if newLetter fits in the sequence
+            const minLetterCode = Math.min(...existingLetters.map((l) => l.charCodeAt(0)));
+            const maxLetterCode = Math.max(...existingLetters.map((l) => l.charCodeAt(0)));
+            
+            // Check if newLetter is within the existing range or one after max
+            if (newLetterCode < minLetterCode || newLetterCode > maxLetterCode + 1) {
+              const minShelf = `S-${String.fromCharCode(minLetterCode)}`;
+              const maxShelf = `S-${String.fromCharCode(maxLetterCode)}`;
+              const nextShelf = `S-${String.fromCharCode(maxLetterCode + 1)}`;
+              setWarningMessage(`Shelves must be sequential. ${trimmed} would create a gap. Expected a letter between ${minShelf} and ${nextShelf}.`);
+            } else {
+              // Check for gaps in the sequence
+              const allLetters = [...existingLetters, newLetter].map((l) => l.charCodeAt(0)).sort((a, b) => a - b);
+              let hasGap = false;
+              for (let i = 0; i < allLetters.length - 1; i++) {
+                if (allLetters[i + 1] - allLetters[i] > 1) {
+                  hasGap = true;
+                  break;
+                }
+              }
+              if (hasGap) {
+                setWarningMessage(`Shelves must be sequential without gaps. ${trimmed} would create a gap in the sequence.`);
+              } else {
+                setDraftShelvesByBay((prev) => { const next = { ...prev }; const s = [...(next[bay] || [])]; if (s[shelfIdx] !== undefined) { s[shelfIdx] = trimmed; s.sort((a, b) => a.localeCompare(b)); next[bay] = s; } return next; });
+              }
+            }
+          }
+        }
+      }
     } else {
       setWarningMessage(`Invalid shelf label "${trimmed}". Expected format: S-A.`);
     }
@@ -296,8 +510,60 @@ export default function LocationManagement({
     if (!trimmed || trimmed === originalLabel) { setEditingCell(null); setEditingValue(""); return; }
     if (/^R-.+$/.test(trimmed)) {
       const existing = Object.entries(draftRowLabels).filter(([k]) => Number(k) !== row).map(([, v]) => v);
-      if (existing.includes(trimmed)) setWarningMessage(`Row label "${trimmed}" already exists.`);
-      else setDraftRowLabels((prev) => ({ ...prev, [row]: trimmed }));
+      if (existing.includes(trimmed)) {
+        setWarningMessage(`Row label "${trimmed}" already exists.`);
+      } else {
+        // Check if the new row maintains sequential numeric order
+        const match = trimmed.match(/^R-(\d+)$/);
+        if (!match) {
+          setWarningMessage(`Row labels must be numeric (e.g., R-1, R-2).`);
+        } else {
+          const newRowNumber = parseInt(match[1], 10);
+          const existingRowNumbers = existing
+            .map((label) => {
+              const m = label.match(/^R-(\d+)$/);
+              return m ? parseInt(m[1], 10) : null;
+            })
+            .filter((n) => n != null)
+            .sort((a, b) => a - b);
+          
+          if (existingRowNumbers.length === 0) {
+            // Only one row, must be R-1
+            if (newRowNumber !== 1) {
+              setWarningMessage(`Rows must start with R-1.`);
+            } else {
+              setDraftRowLabels((prev) => ({ ...prev, [row]: trimmed }));
+            }
+          } else {
+            // Check if newRowNumber fits in the sequence
+            const minRowNumber = Math.min(...existingRowNumbers);
+            const maxRowNumber = Math.max(...existingRowNumbers);
+            
+            // Check if newRowNumber is within the existing range or one after max
+            if (newRowNumber < minRowNumber || newRowNumber > maxRowNumber + 1) {
+              const minRow = `R-${minRowNumber}`;
+              const maxRow = `R-${maxRowNumber}`;
+              const nextRow = `R-${maxRowNumber + 1}`;
+              setWarningMessage(`Rows must be sequential. ${trimmed} would create a gap. Expected a number between ${minRow} and ${nextRow}.`);
+            } else {
+              // Check for gaps in the sequence
+              const allRowNumbers = [...existingRowNumbers, newRowNumber].sort((a, b) => a - b);
+              let hasGap = false;
+              for (let i = 0; i < allRowNumbers.length - 1; i++) {
+                if (allRowNumbers[i + 1] - allRowNumbers[i] > 1) {
+                  hasGap = true;
+                  break;
+                }
+              }
+              if (hasGap) {
+                setWarningMessage(`Rows must be sequential without gaps. ${trimmed} would create a gap in the sequence.`);
+              } else {
+                setDraftRowLabels((prev) => ({ ...prev, [row]: trimmed }));
+              }
+            }
+          }
+        }
+      }
     } else {
       setWarningMessage(`Invalid row label "${trimmed}". Must start with "R-" (e.g., R-1).`);
     }
@@ -335,22 +601,22 @@ export default function LocationManagement({
             {selectedProfile && (
               <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => { setFormError(""); setAddBayNumber(""); setAddBayModalOpen(true); }} className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-5 py-2.5 text-xs font-bold text-white hover:from-emerald-700 hover:to-emerald-600 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 shadow-md shadow-emerald-500/30">
+                  <button type="button" onClick={() => { setFormError(""); setAddBayNumber(""); setAddBayModalOpen(true); }} className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-5 py-2.5 text-xs font-bold text-white hover:from-emerald-600 hover:to-emerald-700 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 shadow-md">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
                     Add bay
                   </button>
-                  <button type="button" onClick={() => { setFormError(""); setAddShelfBay(bayNumbers.length ? String(bayNumbers[0]) : ""); setAddShelfLetters(""); setAddShelfModalOpen(true); }} className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-5 py-2.5 text-xs font-bold text-white hover:from-emerald-700 hover:to-emerald-600 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 shadow-md shadow-emerald-500/30">
+                  <button type="button" onClick={() => { setFormError(""); setAddShelfBay(bayNumbers.length ? String(bayNumbers[0]) : ""); setAddShelfLetters(""); setAddShelfModalOpen(true); }} className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-5 py-2.5 text-xs font-bold text-white hover:from-emerald-600 hover:to-emerald-700 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 shadow-md">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
                     Add shelf
                   </button>
-                  <button type="button" onClick={() => { const b = bayNumbers[0]; setFormError(""); setAddRowsBay(bayNumbers.length ? String(b) : ""); setAddRowsShelf((draftShelvesByBay[b] || [])[0] ?? ""); setAddRowsInput(""); setAddRowsModalOpen(true); }} className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-5 py-2.5 text-xs font-bold text-white hover:from-emerald-700 hover:to-emerald-600 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 shadow-md shadow-emerald-500/30">
+                  <button type="button" onClick={() => { const b = bayNumbers[0]; setFormError(""); setAddRowsBay(bayNumbers.length ? String(b) : ""); setAddRowsShelf((draftShelvesByBay[b] || [])[0] ?? ""); setAddRowsInput(""); setAddRowsModalOpen(true); }} className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-5 py-2.5 text-xs font-bold text-white hover:from-emerald-600 hover:to-emerald-700 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 shadow-md">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
                     Add rows
                   </button>
-                  <button type="button" onClick={() => { const firstBay = bayNumbers[0]; const shelves = firstBay != null ? (draftShelvesByBay[firstBay] || []) : []; const rowKeys = Object.keys(draftRowLabels).map(Number).filter((k) => !Number.isNaN(k)).sort((a, b) => a - b); setFormError(""); setDeleteMode("bay"); setDeleteBayNumber(bayNumbers.length ? String(firstBay) : ""); setDeleteShelfBay(bayNumbers.length ? String(firstBay) : ""); setDeleteShelfLabel(shelves[0] ?? ""); setDeleteRowKey(rowKeys[0] != null ? String(rowKeys[0]) : ""); setDeleteModalOpen(true); }} className="inline-flex items-center justify-center rounded-full border border-red-200 bg-white px-4 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50" disabled={bayNumbers.length === 0 && Object.keys(draftRowLabels || {}).length === 0} title="Delete bay, shelf, or rows">
+                  <button type="button" onClick={() => { const firstBay = bayNumbers[0]; const shelves = firstBay != null ? (draftShelvesByBay[firstBay] || []) : []; const rowKeys = Object.keys(draftRowLabels).map(Number).filter((k) => !Number.isNaN(k)).sort((a, b) => a - b); setFormError(""); setDeleteMode("bay"); setDeleteBayNumber(bayNumbers.length ? String(firstBay) : ""); setDeleteShelfBay(bayNumbers.length ? String(firstBay) : ""); setDeleteShelfLabel(shelves[0] ?? ""); setDeleteRowKey(rowKeys[0] != null ? String(rowKeys[0]) : ""); setDeleteModalOpen(true); }} className="inline-flex items-center justify-center rounded-xl border border-pink-200 bg-white px-4 py-2 text-xs font-semibold text-red-700 hover:bg-pink-50 disabled:opacity-50 shadow-sm" disabled={bayNumbers.length === 0 && Object.keys(draftRowLabels || {}).length === 0} title="Delete bay, shelf, or rows">
                     Delete
                   </button>
-                  <button type="button" onClick={handleSave} disabled={!selectedProfile} className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-sky-600 px-6 py-2.5 text-xs font-bold text-white hover:from-emerald-700 hover:to-sky-700 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-emerald-500/40">
+                  <button type="button" onClick={handleSaveClick} disabled={!selectedProfile} className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-400 to-sky-500 px-6 py-2.5 text-xs font-bold text-white hover:from-emerald-500 hover:to-sky-600 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
                     Save Changes
                   </button>
@@ -383,7 +649,7 @@ export default function LocationManagement({
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-semibold tracking-[0.18em] uppercase text-gray-700">Shelf (letter)</label>
-                  <input type="text" value={addShelfLetters} onChange={(e) => setAddShelfLetters(e.target.value)} placeholder="e.g. S-A, S-B or S-C" className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                  <input type="text" value={addShelfLetters} onChange={(e) => setAddShelfLetters(e.target.value)} placeholder="e.g. A, B" className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
                 </div>
               </div>
               {formError && <p className="mt-3 text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">{formError}</p>}
@@ -411,7 +677,7 @@ export default function LocationManagement({
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-semibold tracking-[0.18em] uppercase text-gray-700">Rows</label>
-                  <input type="text" value={addRowsInput} onChange={(e) => setAddRowsInput(e.target.value)} placeholder="e.g. R-6, R-5" className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                  <input type="text" value={addRowsInput} onChange={(e) => setAddRowsInput(e.target.value)} placeholder="e.g. 1, 2" className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
                 </div>
               </div>
               {formError && <p className="mt-3 text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">{formError}</p>}
@@ -484,6 +750,17 @@ export default function LocationManagement({
               <div className="mt-4 flex gap-2 justify-end">
                 <button type="button" onClick={() => setDeleteConfirmOpen(false)} className="inline-flex items-center justify-center rounded-full border border-emerald-200 bg-white px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-emerald-50">Cancel</button>
                 <button type="button" onClick={() => { const ok = handleDeleteSubmit(); if (ok) { setDeleteConfirmOpen(false); setDeleteModalOpen(false); } }} className="inline-flex items-center justify-center rounded-full bg-red-600 px-4 py-2 text-xs font-semibold text-white hover:bg-red-700">Confirm delete</button>
+              </div>
+            </Modal>
+
+            {/* Save Confirm Modal */}
+            <Modal open={saveConfirmOpen} onClose={() => setSaveConfirmOpen(false)} title="Confirm save changes" borderColor="border-emerald-100">
+              <p className="text-sm text-gray-700">Are you sure you want to save changes to <span className="font-semibold">{selectedProfile?.name || "this location profile"}</span>?</p>
+              <p className="mt-2 text-[11px] text-gray-500">This will permanently update the location profile. Any unsaved changes will be lost.</p>
+              {formError && <p className="mt-3 text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">{formError}</p>}
+              <div className="mt-4 flex gap-2 justify-end">
+                <button type="button" onClick={() => setSaveConfirmOpen(false)} className="inline-flex items-center justify-center rounded-full border border-emerald-200 bg-white px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-emerald-50">Cancel</button>
+                <button type="button" onClick={() => { const ok = handleSave(); if (ok) { setSaveConfirmOpen(false); } }} className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2 text-xs font-semibold text-white hover:from-emerald-600 hover:to-sky-600">Confirm save</button>
               </div>
             </Modal>
 

@@ -4,8 +4,9 @@ import { Modal, Toast } from "../ui/index.js";
 import BoxForm from "./BoxForm.jsx";
 import ConfirmBoxStep from "./ConfirmBoxStep.jsx";
 import DeleteBoxModal from "./DeleteBoxModal.jsx";
-import { MONTHS } from "../../constants/index.js";
-import { DEFAULT_SHELF_LETTERS_BY_BAY } from "../../constants/index.js";
+import ViewBoxModal from "./ViewBoxModal.jsx";
+import { MONTHS, CERT_TYPES } from "../../constants/index.js";
+import { DEFAULT_SHELF_LETTERS_BY_BAY, DEFAULT_ROW_LABELS } from "../../constants/index.js";
 import { getShelfLetter } from "../../utils/index.js";
 
 export default function BoxManagement({
@@ -15,15 +16,21 @@ export default function BoxManagement({
   onDelete,
   addLog,
   shelfLettersByBay,
+  rowLabels,
 }) {
   const shelfMap = shelfLettersByBay || DEFAULT_SHELF_LETTERS_BY_BAY;
+  const rowLabelsMap = rowLabels || DEFAULT_ROW_LABELS;
   const [editingBox, setEditingBox] = useState(null);
   const [showAddBoxModal, setShowAddBoxModal] = useState(false);
   const [modalStep, setModalStep] = useState("form"); // 'form' | 'confirm'
   const [pendingBoxPayload, setPendingBoxPayload] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [certificateTypeFilter, setCertificateTypeFilter] = useState("");
   const [successMessage, setSuccessMessage] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [viewTarget, setViewTarget] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Auto-dismiss success toast
   useEffect(() => {
@@ -32,6 +39,11 @@ export default function BoxManagement({
       return () => clearTimeout(timer);
     }
   }, [successMessage]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, certificateTypeFilter]);
 
   const handleSave = async (payload) => {
     if (editingBox) {
@@ -130,24 +142,50 @@ export default function BoxManagement({
   );
 
   const filteredBoxes = useMemo(() => {
-    if (!searchQuery.trim()) return sortedBoxes;
-    const q = searchQuery.trim().toLowerCase();
-    return sortedBoxes.filter((box) => {
-      const fields = [
-        String(box.boxNumber ?? ""),
-        String(box.bay ?? ""),
-        getShelfLetter(shelfMap, box.bay, box.shelf),
-        String(box.row ?? ""),
-        String(box.certificateType ?? ""),
-        String(box.year ?? ""),
-        String(box.yearTo ?? ""),
-        MONTHS[box.monthIndex] ?? "",
-        String(box.registryRange ?? ""),
-        String(box.remark ?? ""),
-      ];
-      return fields.some((f) => f.toLowerCase().includes(q));
-    });
-  }, [sortedBoxes, searchQuery, shelfMap]);
+    let filtered = sortedBoxes;
+    
+    // Filter by certificate type
+    if (certificateTypeFilter) {
+      filtered = filtered.filter((box) => box.certificateType === certificateTypeFilter);
+    }
+    
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      filtered = filtered.filter((box) => {
+        const fields = [
+          String(box.boxNumber ?? ""),
+          String(box.bay ?? ""),
+          getShelfLetter(shelfMap, box.bay, box.shelf),
+          String(box.row ?? ""),
+          String(box.certificateType ?? ""),
+          String(box.year ?? ""),
+          String(box.yearTo ?? ""),
+          MONTHS[box.monthIndex] ?? "",
+          String(box.registryRange ?? ""),
+          String(box.remark ?? ""),
+        ];
+        return fields.some((f) => f.toLowerCase().includes(q));
+      });
+    }
+    
+    return filtered;
+  }, [sortedBoxes, searchQuery, certificateTypeFilter, shelfMap]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredBoxes.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedBoxes = useMemo(
+    () => filteredBoxes.slice(startIndex, endIndex),
+    [filteredBoxes, startIndex, endIndex]
+  );
+
+  const goToPage = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -202,6 +240,7 @@ export default function BoxManagement({
             onCancel={closeModal}
             existingBoxes={boxes}
             shelfLettersByBay={shelfMap}
+            rowLabels={rowLabelsMap}
           />
         )}
         {modalStep === "confirm" && pendingBoxPayload && (
@@ -222,14 +261,34 @@ export default function BoxManagement({
         onCancel={() => setDeleteTarget(null)}
       />
 
+      {/* View box details modal */}
+      <ViewBoxModal
+        box={viewTarget}
+        shelfLettersByBay={shelfMap}
+        rowLabels={rowLabelsMap}
+        onClose={() => setViewTarget(null)}
+      />
+
       {/* Box table */}
-      <div className="rounded-3xl p-5 bg-gradient-to-br from-white via-emerald-50/30 to-sky-50/20 max-h-[28rem] overflow-hidden flex flex-col shadow-lg shadow-emerald-100/50 hover:shadow-xl hover:shadow-emerald-200/50 transition-all duration-300">
+      <div className="rounded-3xl p-5 bg-gradient-to-br from-white via-emerald-50/30 to-sky-50/20 max-h-[45rem] overflow-hidden flex flex-col shadow-lg shadow-emerald-100/50 hover:shadow-xl hover:shadow-emerald-200/50 transition-all duration-300">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50" />
             Registered Boxes
           </h3>
           <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={certificateTypeFilter}
+              onChange={(e) => setCertificateTypeFilter(e.target.value)}
+              className="rounded-xl bg-white px-4 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 border-2 border-emerald-200/60 hover:border-emerald-300 shadow-sm hover:shadow-md transition-all duration-200"
+            >
+              <option value="">All Certificate Types</option>
+              {CERT_TYPES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
             <input
               type="text"
               value={searchQuery}
@@ -237,10 +296,13 @@ export default function BoxManagement({
               placeholder="Search boxes..."
               className="rounded-xl bg-white px-4 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 min-w-[10rem] shadow-sm hover:shadow-md transition-all duration-200"
             />
-            {searchQuery && (
+            {(searchQuery || certificateTypeFilter) && (
               <button
                 type="button"
-                onClick={() => setSearchQuery("")}
+                onClick={() => {
+                  setSearchQuery("");
+                  setCertificateTypeFilter("");
+                }}
                 className="inline-flex items-center justify-center rounded-xl border-2 border-emerald-200/60 bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-emerald-50 hover:border-emerald-300 hover:shadow-md active:scale-95 transition-all duration-200"
               >
                 Clear
@@ -249,8 +311,8 @@ export default function BoxManagement({
           </div>
         </div>
         <p className="text-[11px] text-gray-500 mb-2">
-          {filteredBoxes.length} record{filteredBoxes.length === 1 ? "" : "s"}
-          {searchQuery.trim() ? ` (filtered from ${sortedBoxes.length})` : ""}
+          Showing {filteredBoxes.length === 0 ? 0 : startIndex + 1}–{Math.min(endIndex, filteredBoxes.length)} of {filteredBoxes.length} record{filteredBoxes.length === 1 ? "" : "s"}
+          {(searchQuery.trim() || certificateTypeFilter) ? ` (filtered from ${sortedBoxes.length})` : ""}
         </p>
 
         <div className="overflow-auto custom-scrollbar -mx-2 px-2 flex-1 min-h-0">
@@ -266,9 +328,6 @@ export default function BoxManagement({
                 <thead>
                   <tr className="border-b border-emerald-200 bg-emerald-50/70">
                     <th className="px-3 py-2 font-semibold text-gray-600 whitespace-nowrap">Box #</th>
-                    <th className="px-3 py-2 font-semibold text-gray-600 whitespace-nowrap">Bay</th>
-                    <th className="px-3 py-2 font-semibold text-gray-600 whitespace-nowrap">Shelf</th>
-                    <th className="px-3 py-2 font-semibold text-gray-600 whitespace-nowrap">Row / Level</th>
                     <th className="px-3 py-2 font-semibold text-gray-600 whitespace-nowrap">Month (From – To)</th>
                     <th className="px-3 py-2 font-semibold text-gray-600 whitespace-nowrap">Year</th>
                     <th className="px-3 py-2 font-semibold text-gray-600 whitespace-nowrap">Certificate Type</th>
@@ -278,71 +337,150 @@ export default function BoxManagement({
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredBoxes.map((box) => (
-                    <tr
-                      key={box.id}
-                      className="border-b border-emerald-100/50 bg-white hover:bg-gradient-to-r hover:from-emerald-50/80 hover:to-sky-50/60 hover:shadow-sm transition-all duration-200 group cursor-pointer"
-                    >
-                      <td className="px-4 py-3 text-gray-900 whitespace-nowrap font-semibold group-hover:text-emerald-700 transition-colors">
-                        {box.boxNumber != null && box.boxNumber !== "" ? box.boxNumber : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-gray-900 whitespace-nowrap font-medium group-hover:text-emerald-700 transition-colors">{box.bay}</td>
-                      <td className="px-4 py-3 text-gray-900 whitespace-nowrap font-medium group-hover:text-emerald-700 transition-colors">
-                        {getShelfLetter(shelfMap, box.bay, box.shelf)}
-                      </td>
-                      <td className="px-4 py-3 text-gray-900 whitespace-nowrap font-medium group-hover:text-emerald-700 transition-colors">{box.row}</td>
-                      <td className="px-3 py-2 text-gray-900 whitespace-nowrap">
-                        {box.monthIndex != null
-                          ? box.monthIndexTo != null && box.monthIndexTo !== box.monthIndex
-                            ? `${MONTHS[box.monthIndex]} – ${MONTHS[box.monthIndexTo]}`
-                            : MONTHS[box.monthIndex]
-                          : "—"}
-                      </td>
-                      <td className="px-3 py-2 text-gray-900 whitespace-nowrap">
-                        {box.yearTo != null ? `${box.year} – ${box.yearTo}` : box.year}
-                      </td>
-                      <td className="px-3 py-2 whitespace-nowrap">
-                        {box.certificateType ? (
-                          <CertificateBadge type={box.certificateType} compact />
-                        ) : (
-                          <span className="text-gray-400">—</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{box.registryRange || "—"}</td>
-                      <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{box.remark || "—"}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-center">
-                        <div className="inline-flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); startEdit(box); }}
-                            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-3 py-1.5 text-[11px] font-bold text-white hover:from-emerald-700 hover:to-emerald-600 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 shadow-md shadow-emerald-500/30"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                            Update
-                          </button>
-                          {onDelete && (
+                  {paginatedBoxes.map((box) => (
+                      <tr
+                        key={box.id}
+                        className="border-b border-emerald-100/50 bg-white hover:bg-gradient-to-r hover:from-emerald-50/80 hover:to-sky-50/60 hover:shadow-sm transition-all duration-200 group cursor-pointer"
+                      >
+                        <td className="px-4 py-3 text-gray-900 whitespace-nowrap font-semibold group-hover:text-emerald-700 transition-colors">
+                          {box.boxNumber != null && box.boxNumber !== "" ? box.boxNumber : "—"}
+                        </td>
+                        <td className="px-3 py-2 text-gray-900 whitespace-nowrap">
+                          {box.monthIndex != null
+                            ? box.monthIndexTo != null && box.monthIndexTo !== box.monthIndex
+                              ? `${MONTHS[box.monthIndex]} – ${MONTHS[box.monthIndexTo]}`
+                              : MONTHS[box.monthIndex]
+                            : "—"}
+                        </td>
+                        <td className="px-3 py-2 text-gray-900 whitespace-nowrap">
+                          {box.yearTo != null ? `${box.year} – ${box.yearTo}` : box.year}
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          {box.certificateType ? (
+                            <CertificateBadge type={box.certificateType} compact />
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{box.registryRange || "—"}</td>
+                        <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{box.remark || "—"}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-center">
+                          <div className="inline-flex items-center gap-1.5">
                             <button
                               type="button"
-                              onClick={(e) => { e.stopPropagation(); setDeleteTarget(box); }}
-                              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-red-600 to-red-500 px-3 py-1.5 text-[11px] font-bold text-white hover:from-red-700 hover:to-red-600 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 shadow-md shadow-red-500/30"
+                              onClick={(e) => { e.stopPropagation(); setViewTarget(box); }}
+                              className="inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-gray-300 bg-white px-3 py-1.5 text-[11px] font-bold text-gray-700 hover:bg-emerald-50 hover:border-emerald-400 hover:shadow-md active:scale-95 transition-all duration-200 shadow-sm"
+                              title="View details"
                             >
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                               </svg>
-                              Delete
+                              View
                             </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); startEdit(box); }}
+                              className="inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-gray-300 bg-white px-3 py-1.5 text-[11px] font-bold text-gray-700 hover:bg-emerald-50 hover:border-emerald-400 hover:shadow-md active:scale-95 transition-all duration-200 shadow-sm"
+                              title="Edit box"
+                            >
+                              <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                              Update
+                            </button>
+                            {onDelete && (
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setDeleteTarget(box); }}
+                                className="inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-gray-300 bg-white px-3 py-1.5 text-[11px] font-bold text-gray-700 hover:bg-emerald-50 hover:border-emerald-400 hover:shadow-md active:scale-95 transition-all duration-200 shadow-sm"
+                                title="Delete box"
+                              >
+                                <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Delete
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           )}
         </div>
+
+        {/* Pagination Controls */}
+        {filteredBoxes.length > 0 && totalPages > 1 && (
+          <div className="flex items-center justify-between pt-4 mt-4 border-t border-emerald-200/50">
+            <div className="text-xs text-gray-600">
+              Page {currentPage} of {totalPages}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="inline-flex items-center justify-center rounded-xl border-2 border-emerald-200/60 bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-emerald-50 hover:border-emerald-300 hover:shadow-md active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:border-emerald-200/60"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                </svg>
+                Previous
+              </button>
+              
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                  // Show first page, last page, current page, and pages around current
+                  if (
+                    page === 1 ||
+                    page === totalPages ||
+                    (page >= currentPage - 1 && page <= currentPage + 1)
+                  ) {
+                    return (
+                      <button
+                        key={page}
+                        type="button"
+                        onClick={() => goToPage(page)}
+                        className={`inline-flex items-center justify-center rounded-xl px-3 py-2 text-xs font-bold transition-all duration-200 ${
+                          currentPage === page
+                            ? "bg-gradient-to-r from-emerald-600 to-sky-600 text-white shadow-md shadow-emerald-500/40"
+                            : "border-2 border-emerald-200/60 bg-white text-gray-700 hover:bg-emerald-50 hover:border-emerald-300 hover:shadow-md active:scale-95"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  } else if (
+                    page === currentPage - 2 ||
+                    page === currentPage + 2
+                  ) {
+                    return (
+                      <span key={page} className="px-2 text-xs text-gray-400">
+                        ...
+                      </span>
+                    );
+                  }
+                  return null;
+                })}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="inline-flex items-center justify-center rounded-xl border-2 border-emerald-200/60 bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-emerald-50 hover:border-emerald-300 hover:shadow-md active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:border-emerald-200/60"
+              >
+                Next
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

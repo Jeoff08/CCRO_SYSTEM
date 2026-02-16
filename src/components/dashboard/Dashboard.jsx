@@ -148,6 +148,7 @@ export default function Dashboard({
                 onDelete={deleteBox}
                 addLog={addLog}
                 shelfLettersByBay={activeLocationProfile?.shelfLettersByBay}
+                rowLabels={activeLocationProfile?.rowLabels}
               />
             )}
             {activeTab === TABS.LOCATOR && (

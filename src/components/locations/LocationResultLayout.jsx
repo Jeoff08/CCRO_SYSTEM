@@ -174,7 +174,7 @@ export default function LocationResultLayout({
           <LocationRack3D
             shelfLettersByBay={shelfLettersByBay}
             rowLabels={rowLabels}
-            highlight={hasResult ? { bay: resultBay, shelf: resultShelf, row: resultRow, box: resultBox, info: matchingBox ? { certificateType: matchingBox.certificateType, year: matchingBox.year, yearTo: matchingBox.yearTo, registryRange: matchingBox.registryRange } : null } : null}
+            highlight={hasResult ? { bay: resultBay, shelf: resultShelf, row: resultRow, box: resultBox, info: matchingBox ? { certificateType: matchingBox.certificateType, year: matchingBox.year, yearTo: matchingBox.yearTo, monthIndex: matchingBox.monthIndex, monthIndexTo: matchingBox.monthIndexTo, registryRange: matchingBox.registryRange } : null } : null}
           />
           {onFullscreen && (
             <button

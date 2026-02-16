@@ -1,7 +1,7 @@
 {
   "name": "ccro-archive-locator-system",
   "private": true,
-  "version": "2.1.0",
+  "version": "3.0.0",
   "type": "module",
   "main": "electron/main.cjs",
   "author": "CCRO Iligan",
@@ -27,6 +27,7 @@
     "better-sqlite3": "^11.7.0",
     "cors": "^2.8.5",
     "express": "^4.21.1",
+    "framer-motion": "^12.34.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "tailwindcss": "^4.1.18",

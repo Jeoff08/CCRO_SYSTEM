@@ -250,7 +250,7 @@ export default function DocumentLocator({
             <LocationRack3D
               shelfLettersByBay={shelfLettersByBay}
               rowLabels={rowLabels}
-              highlight={result && matchingBox ? { bay: matchingBox.bay, shelf: matchingBox.shelf, row: matchingBox.row, box: matchingBox.boxNumber, info: { certificateType: matchingBox.certificateType, year: matchingBox.year, yearTo: matchingBox.yearTo, registryRange: matchingBox.registryRange } } : null}
+              highlight={result && matchingBox ? { bay: matchingBox.bay, shelf: matchingBox.shelf, row: matchingBox.row, box: matchingBox.boxNumber, info: { certificateType: matchingBox.certificateType, year: matchingBox.year, yearTo: matchingBox.yearTo, monthIndex: matchingBox.monthIndex, monthIndexTo: matchingBox.monthIndexTo, registryRange: matchingBox.registryRange } } : null}
               className="!rounded-none !border-0 !shadow-none"
               style={{ height: "100%" }}
             />
