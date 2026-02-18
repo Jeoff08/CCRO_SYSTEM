@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { authAPI } from "../../api/index.js";
 
-export default function LoginForm({ onLoginSuccess }) {
+export default function LoginForm({ onLoginSuccess, onBackToLocator }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -103,6 +103,15 @@ export default function LoginForm({ onLoginSuccess }) {
               >
                 {isSubmitting ? "Signing in..." : "Login"}
               </button>
+              {onBackToLocator && (
+                <button
+                  type="button"
+                  onClick={onBackToLocator}
+                  className="w-full text-xs text-emerald-600 hover:text-emerald-800 font-medium"
+                >
+                  ← Back to Document Locator
+                </button>
+              )}
             </form>
           </div>
         </div>
