@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import DocumentLocator from "../locator/DocumentLocator.jsx";
 import BoxManagement from "../boxes/BoxManagement.jsx";
 import LocationManagement from "../locations/LocationManagement.jsx";
+import Backup from "../backup/Backup.jsx";
+import AboutDeveloper from "../about/AboutDeveloper.jsx";
 import DashboardHome from "./DashboardHome.jsx";
 import Sidebar, { TABS } from "../layout/Sidebar.jsx";
 import { Modal } from "../ui/index.js";
@@ -16,6 +18,7 @@ export default function Dashboard({
 }) {
   const [activeTab, setActiveTab] = useState(TABS.DASHBOARD);
   const [loading, setLoading] = useState(true);
+  const [adminManualOpen, setAdminManualOpen] = useState(false);
 
   const { boxes, loadBoxes, addBox, updateBox, deleteBox } = useBoxes();
   const {
@@ -119,6 +122,16 @@ export default function Dashboard({
             </div>
           </div>
           <div className="flex-1 px-4 py-3 flex items-center justify-end gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={() => setAdminManualOpen(true)}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/20 hover:bg-white/30 px-4 py-2 text-xs font-semibold text-white transition-all duration-200 hover:shadow-md border border-white/30"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+              User Manual
+            </button>
             {user && (
               <div className="text-right">
                 <p className="text-xs font-semibold text-white">{user.username}</p>
@@ -170,9 +183,90 @@ export default function Dashboard({
                 saveRef={locationSaveRef}
               />
             )}
+            {activeTab === TABS.BACKUP && !loading && (
+              <Backup
+                boxes={boxes}
+                onRefresh={loadBoxes}
+              />
+            )}
+            {activeTab === TABS.ABOUT && (
+              <AboutDeveloper />
+            )}
           </section>
         </main>
       </div>
+
+      {/* Admin User Manual modal */}
+      <Modal
+        open={adminManualOpen}
+        onClose={() => setAdminManualOpen(false)}
+        title="Admin User Manual"
+        maxWidth="max-w-2xl"
+        borderColor="border-emerald-100"
+      >
+        <div className="space-y-5 text-sm text-gray-700 max-h-[70vh] overflow-y-auto pr-1">
+          <p className="leading-relaxed">
+            Administrators manage boxes, locations, and monitor activity. You must log in to access the admin area.
+          </p>
+
+          <section>
+            <h4 className="font-semibold text-gray-900 mb-2">1. Logging In</h4>
+            <p className="text-gray-600 mb-2">On the public locator page, click <strong>Login</strong> (top-right). Enter <strong>Username</strong> and <strong>Password</strong>, then click Login. If credentials are valid, you are taken to the Dashboard. Click &ldquo;← Back to Document Locator&rdquo; on the login page to return without logging in.</p>
+          </section>
+
+          <section>
+            <h4 className="font-semibold text-gray-900 mb-2">2. Admin Layout</h4>
+            <p className="text-gray-600 mb-2">After login: <strong>Header</strong> — Logo and your username and role. <strong>Sidebar</strong> — Dashboard, Box Management, Document Locator, Location Management. <strong>Main area</strong> — Content for the selected item. <strong>Logout</strong> — At the bottom of the sidebar.</p>
+          </section>
+
+          <section>
+            <h4 className="font-semibold text-gray-900 mb-2">3. Dashboard</h4>
+            <p className="text-gray-600 mb-2">Overview of recent activity and stats. <strong>Quick Stats</strong> — Registered Boxes count. <strong>Activity Log</strong> — Recent actions (logins, searches, box add/update/delete). Use <strong>Clear History</strong> to remove all activity entries.</p>
+          </section>
+
+          <section>
+            <h4 className="font-semibold text-gray-900 mb-2">4. Box Management</h4>
+            <p className="text-gray-600 mb-2">Register and maintain boxes. <strong>Add box</strong> — Complete Certificate Type, Year, Month, Box Number, Bay, Shelf, Row, Registry Range. <strong>Edit</strong> — Click Update, change fields, Save. <strong>View</strong> — Click View for details. <strong>Delete</strong> — Click Delete and confirm. Filter by Certificate Type and Search across fields. Use pagination for many boxes.</p>
+          </section>
+
+          <section>
+            <h4 className="font-semibold text-gray-900 mb-2">5. Location Management</h4>
+            <p className="text-gray-600 mb-2">Configure bays, shelves, and rows. <strong>Add Bay</strong> — Enter bay number. <strong>Add Shelf</strong> — Select bay, enter shelf letters (e.g. S-A, S-B). <strong>Add Rows</strong> — Select bay and shelf, enter row labels. Edit in place in the 2D Table. Use Delete to remove bays, shelves, or rows. Click <strong>Save Changes</strong> and confirm to update the active profile. 2D Table for editing; 3D Model for viewing (drag to rotate, scroll to zoom).</p>
+          </section>
+
+          <section>
+            <h4 className="font-semibold text-gray-900 mb-2">6. Backup (Export / Import)</h4>
+            <p className="text-gray-600 mb-2">Export Box management as a .db file or import from a .db file. Only the registered boxes table is included; use a file exported with &ldquo;Export .db (Box management)&rdquo; for import.</p>
+          </section>
+
+          <section>
+            <h4 className="font-semibold text-gray-900 mb-2">7. Unsaved Changes &amp; Logout</h4>
+            <p className="text-gray-600 mb-2">If you switch away from Location Management or log out with unsaved changes, a confirmation appears: <strong>Stay &amp; keep editing</strong>, <strong>Discard changes</strong>, or <strong>Save &amp; continue</strong>. Click Logout at the bottom of the sidebar to return to the public Document Locator page.</p>
+          </section>
+
+          <section>
+            <h4 className="font-semibold text-gray-900 mb-2">Certificate Types</h4>
+            <table className="w-full text-left border border-gray-200 rounded-lg overflow-hidden text-gray-600">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="px-3 py-2 font-semibold">Code</th>
+                  <th className="px-3 py-2 font-semibold">Full Name</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-t border-gray-200"><td className="px-3 py-2">COLB</td><td className="px-3 py-2">Birth (COLB)</td></tr>
+                <tr className="border-t border-gray-200"><td className="px-3 py-2">COM</td><td className="px-3 py-2">Marriage (COM)</td></tr>
+                <tr className="border-t border-gray-200"><td className="px-3 py-2">COD</td><td className="px-3 py-2">Death (COD)</td></tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section>
+            <h4 className="font-semibold text-gray-900 mb-2">Registry Range Format</h4>
+            <p className="text-gray-600">Use <code className="bg-gray-100 px-1 rounded">start-end</code> (e.g. <code className="bg-gray-100 px-1 rounded">1-500</code>, <code className="bg-gray-100 px-1 rounded">501-1000</code>). The registry number entered in a search must fall within one of the ranges.</p>
+          </section>
+        </div>
+      </Modal>
 
       {/* Unsaved-changes modal */}
       <Modal open={unsavedModalOpen} onClose={handleUnsavedCancel} title="Unsaved changes" borderColor="border-amber-200">

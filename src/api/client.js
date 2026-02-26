@@ -37,3 +37,15 @@ export async function apiRequest(endpoint, options = {}) {
     throw error;
   }
 }
+
+/**
+ * Fetch Box management export as a .db file (blob). Caller should trigger download.
+ */
+export async function fetchBoxManagementExportDb() {
+  const response = await fetch(`${API_BASE_URL}/boxes/export-db`);
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || `Export failed: ${response.status}`);
+  }
+  return response.blob();
+}
