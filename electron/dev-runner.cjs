@@ -3,31 +3,40 @@
  * Waits for Vite to be ready before launching Electron.
  */
 const { spawn } = require("child_process");
+const fs = require("fs");
+const path = require("path");
 const http = require("http");
 
-const VITE_PORT = 5173;
+// #region agent log
+function _dbg(loc, msg, data) {
+  const payload = JSON.stringify({ sessionId: "e27ead", location: loc, message: msg, data: data || {}, timestamp: Date.now(), hypothesisId: "E" }) + "\n";
+  fs.appendFileSync(path.join(process.cwd(), "debug-e27ead.log"), payload);
+}
+// #endregion
 
-function waitForPort(port, timeout = 30000) {
+const VITE_PORT = 5174;
+
+function waitForVite(port, timeout = 30000) {
   return new Promise((resolve, reject) => {
     const start = Date.now();
 
     function tryConnect() {
-      const req = http.get(`http://localhost:${port}`, (res) => {
-        res.resume(); // consume response data to free memory
-        resolve();
+      const req = http.get(`http://127.0.0.1:${port}`, (res) => {
+        let body = "";
+        res.on("data", (chunk) => { body += chunk; });
+        res.on("end", () => {
+          const ok = res.statusCode === 200 && (body.includes("<html") || body.includes("<!doctype"));
+          if (ok) return resolve();
+          if (Date.now() - start > timeout) return reject(new Error(`Vite not ready: status ${res.statusCode}`));
+          setTimeout(tryConnect, 300);
+        });
       });
 
       req.on("error", () => {
-        if (Date.now() - start > timeout) {
-          reject(new Error(`Timeout waiting for port ${port}`));
-        } else {
-          setTimeout(tryConnect, 500);
-        }
+        if (Date.now() - start > timeout) reject(new Error(`Timeout waiting for port ${port}`));
+        else setTimeout(tryConnect, 500);
       });
-
-      req.setTimeout(2000, () => {
-        req.destroy();
-      });
+      req.setTimeout(5000, () => { req.destroy(); });
     }
 
     tryConnect();
@@ -47,8 +56,9 @@ vite.on("error", (err) => {
 });
 
 // Wait for Vite, then start Electron
-waitForPort(VITE_PORT)
+waitForVite(VITE_PORT)
   .then(() => {
+    _dbg("dev-runner.cjs", "Vite port ready, spawning Electron", { port: VITE_PORT });
     console.log(`\n  Vite is ready on port ${VITE_PORT}, starting Electron...\n`);
 
     const electron = spawn("npx", ["electron", "."], {

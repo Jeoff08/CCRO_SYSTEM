@@ -4,6 +4,7 @@ export const TABS = {
   DASHBOARD: "dashboard",
   BOXES: "boxes",
   LOCATOR: "locator",
+  PERSONNEL: "personnel",
   LOCATIONS: "locations",
   BACKUP: "backup",
   ABOUT: "about",
@@ -34,6 +35,15 @@ const SIDEBAR_ITEMS = [
     icon: (
       <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      </svg>
+    ),
+  },
+  {
+    id: TABS.PERSONNEL,
+    label: "Personnel Management",
+    icon: (
+      <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
       </svg>
     ),
   },

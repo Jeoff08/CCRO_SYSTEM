@@ -25,6 +25,21 @@ export async function apiRequest(endpoint, options = {}) {
       return null;
     }
 
+    const contentType = response.headers.get("Content-Type") || "";
+    if (!contentType.includes("application/json")) {
+      const text = await response.text();
+      if (text.trimStart().startsWith("<!") || text.trimStart().startsWith("<")) {
+        throw new Error(
+          "Server returned HTML instead of JSON. Is the API server running at " +
+            API_BASE_URL.replace(/\/api\/?$/, "") +
+            "? Start it (e.g. node server/index.js) and try again."
+        );
+      }
+      throw new Error(
+        "Server returned non-JSON (Content-Type: " + contentType + "). Status: " + response.status
+      );
+    }
+
     const data = await response.json();
 
     if (!response.ok) {

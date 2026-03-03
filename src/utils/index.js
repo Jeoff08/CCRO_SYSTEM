@@ -1,4 +1,4 @@
-export { formatActivityType, formatActivityTimestamp } from "./formatting.js";
+export { formatActivityType, formatActivityTimestamp, formatLogDetails } from "./formatting.js";
 
 export {
   getShelfLetter,

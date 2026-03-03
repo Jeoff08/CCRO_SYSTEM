@@ -6,7 +6,16 @@
  */
 const { app, BrowserWindow } = require("electron");
 const path = require("path");
+const fs = require("fs");
 const { fork } = require("child_process");
+
+// #region agent log
+const LOG_PATH = path.join(__dirname, "..", "debug-e27ead.log");
+function _dbg(loc, msg, data) {
+  const payload = JSON.stringify({ sessionId: "e27ead", location: loc, message: msg, data: data || {}, timestamp: Date.now(), hypothesisId: "A" }) + "\n";
+  fs.appendFileSync(LOG_PATH, payload);
+}
+// #endregion
 
 const isDev = !app.isPackaged;
 
@@ -51,17 +60,36 @@ function createWindow() {
     icon: iconPath,
     title: "CCRO Archive Locator System",
     autoHideMenuBar: true,
+    show: false,
     webPreferences: {
-      preload: path.join(__dirname, "preload.cjs"),
+      preload: isDev ? undefined : path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
     },
   });
 
+
+  // #region agent log
+  const loadUrl = isDev ? "http://127.0.0.1:5174" : "file://" + path.join(__dirname, "..", "dist", "index.html");
+  _dbg("main.cjs:createWindow", "loadURL called", { url: loadUrl, isDev });
+  mainWindow.webContents.on("did-finish-load", () => {
+    const url = mainWindow.webContents.getURL();
+    _dbg("main.cjs:did-finish-load", "page load finished", { url });
+    const isDevUrl = url.startsWith("http://127.0.0.1:5174") || url.startsWith("http://localhost:5174");
+    const isProdUrl = url.startsWith("file://");
+    if (isDevUrl || isProdUrl) mainWindow.show();
+  });
+  mainWindow.webContents.on("did-fail-load", (e, code, desc, url) => {
+    _dbg("main.cjs:did-fail-load", "page load failed", { code, desc, url });
+    mainWindow.show();
+  });
+  mainWindow.webContents.on("console-message", (e, level, msg, line, sourceId) => {
+    if (level >= 3) _dbg("main.cjs:console", "renderer console", { level, msg: msg.slice(0, 500), line, sourceId });
+  });
+  // #endregion
+
   if (isDev) {
-    mainWindow.loadURL("http://localhost:5173");
-    // Uncomment to open DevTools automatically in dev mode:
-    // mainWindow.webContents.openDevTools();
+    mainWindow.loadURL("http://127.0.0.1:5174");
   } else {
     mainWindow.loadFile(path.join(__dirname, "..", "dist", "index.html"));
   }

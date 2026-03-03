@@ -1,7 +1,7 @@
 {
   "name": "ccro-archive-locator-system",
   "private": true,
-  "version": "3.0.0",
+  "version": "3.1.0",
   "type": "module",
   "main": "electron/main.cjs",
   "author": "CCRO Iligan",
@@ -34,6 +34,7 @@
     "three": "^0.182.0"
   },
   "devDependencies": {
+    "@faker-js/faker": "^10.3.0",
     "concurrently": "^9.1.2",
     "electron": "^33.0.0",
     "electron-builder": "^25.1.8",

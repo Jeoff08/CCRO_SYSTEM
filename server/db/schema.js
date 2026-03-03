@@ -59,9 +59,39 @@ export function createSchema() {
   `);
 
   db.exec(`
+    CREATE TABLE IF NOT EXISTS personnel (
+      id TEXT PRIMARY KEY,
+      personnel_id TEXT UNIQUE NOT NULL,
+      full_name TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS checkouts (
+      id TEXT PRIMARY KEY,
+      personnel_id TEXT NOT NULL,
+      personnel_name TEXT,
+      box_id TEXT NOT NULL,
+      cert_type TEXT NOT NULL,
+      registry_range TEXT,
+      month_str TEXT,
+      year_str TEXT,
+      checkout_date TEXT NOT NULL,
+      checkout_time TEXT NOT NULL,
+      returned_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (box_id) REFERENCES boxes(id)
+    )
+  `);
+
+  db.exec(`
     CREATE INDEX IF NOT EXISTS idx_boxes_cert_year ON boxes(certificate_type, year);
     CREATE INDEX IF NOT EXISTS idx_boxes_location ON boxes(bay, shelf, row);
     CREATE INDEX IF NOT EXISTS idx_activity_logs_timestamp ON activity_logs(timestamp DESC);
     CREATE INDEX IF NOT EXISTS idx_activity_logs_user ON activity_logs(user_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_personnel_personnel_id ON personnel(personnel_id);
+    CREATE INDEX IF NOT EXISTS idx_checkouts_personnel_id ON checkouts(personnel_id);
+    CREATE INDEX IF NOT EXISTS idx_checkouts_returned_at ON checkouts(returned_at);
   `);
 }

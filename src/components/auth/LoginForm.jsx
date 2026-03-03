@@ -107,7 +107,7 @@ export default function LoginForm({ onLoginSuccess, onBackToLocator }) {
                 <button
                   type="button"
                   onClick={onBackToLocator}
-                  className="w-full text-xs text-emerald-600 hover:text-emerald-800 font-medium"
+                  className="w-full text-xs text-emerald-600 hover:text-emerald-800 font-medium transition-colors duration-200"
                 >
                   ← Back to Document Locator
                 </button>

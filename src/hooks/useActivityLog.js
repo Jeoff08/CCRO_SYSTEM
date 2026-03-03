@@ -1,5 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
 import { activityLogsAPI } from "../api/index.js";
+import { formatLogDetails } from "../utils/index.js";
+
+/**
+ * Normalize details to a display-safe string (avoids React "Objects are not valid as a React child").
+ */
+function normalizeDetails(details) {
+  if (details == null) return "";
+  if (typeof details === "string") return details;
+  if (typeof details === "object" && details.message) return details.message;
+  if (typeof details === "object") return formatLogDetails(details);
+  return String(details);
+}
 
 /**
  * Hook that manages activity log state and API interaction.
@@ -11,7 +23,8 @@ export function useActivityLog(user) {
   const loadActivityLogs = useCallback(async () => {
     try {
       const logs = await activityLogsAPI.getAll(100);
-      setActivityLog(logs);
+      const normalized = logs.map((log) => ({ ...log, details: normalizeDetails(log.details) }));
+      setActivityLog(normalized);
     } catch (error) {
       console.error("Failed to load activity logs:", error);
     }
@@ -33,7 +46,7 @@ export function useActivityLog(user) {
         };
 
         const newLog = await activityLogsAPI.create(logData);
-        setActivityLog((prev) => [newLog, ...prev]);
+        setActivityLog((prev) => [{ ...newLog, details: normalizeDetails(newLog.details) }, ...prev]);
       } catch (error) {
         console.error("Failed to create activity log:", error);
         // Fallback to local state if API fails
@@ -41,7 +54,7 @@ export function useActivityLog(user) {
           {
             id: crypto.randomUUID(),
             type,
-            details,
+            details: normalizeDetails(details),
             timestamp: new Date().toISOString(),
           },
           ...prev,

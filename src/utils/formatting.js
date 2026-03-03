@@ -15,9 +15,30 @@ export function formatActivityType(type) {
       return "Box Edited";
     case "box-delete":
       return "Box Deleted";
+    case "checkout":
+      return "Box Checked Out";
+    case "return":
+      return "Box Returned";
+    case "box-import":
+      return "Boxes Imported";
+    case "box-export":
+      return "Boxes Exported";
     default:
       return type;
   }
+}
+
+/**
+ * Format activity log details object to a display string.
+ */
+export function formatLogDetails(details) {
+  if (details == null || typeof details !== "object") return String(details ?? "");
+  if (details.message) return details.message;
+  if (details.boxId != null && details.personnelId != null) {
+    return `Box ${details.boxId} checked out by ${details.personnelId}`;
+  }
+  if (details.checkoutId != null) return `Checkout ${details.checkoutId} returned`;
+  return JSON.stringify(details);
 }
 
 /**

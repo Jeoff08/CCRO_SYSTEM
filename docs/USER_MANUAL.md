@@ -7,7 +7,8 @@
 ## Table of Contents
 
 1. [User Manual (Public Document Locator)](#1-user-manual-public-document-locator)
-2. [Admin Manual](#2-admin-manual)
+2. [E-Log (Check Out & Return Boxes)](#2-e-log-check-out--return-boxes)
+3. [Admin Manual](#3-admin-manual)
 
 ---
 
@@ -20,6 +21,7 @@ The public Document Locator allows anyone to search for document locations witho
 1. Open the CCRO Archive Locator application or visit the public URL.
 2. You will see the **Document Locator** screen with the header “CCRO Document Locator — Public Search.”
 3. No login is required; you can search immediately.
+4. In the header, **E-log** opens the E-Log (check out and return boxes). See [Section 2. E-Log](#2-e-log-check-out--return-boxes).
 
 ### 1.2 How to Search for a Document
 
@@ -119,11 +121,116 @@ The result includes two layout views:
 
 ---
 
-## 2. Admin Manual
+## 2. E-Log (Check Out & Return Boxes)
+
+**For Personnel Authorized to Check Out Boxes/Bundles**
+
+This section is for **personnel who are authorized to check out and return certificate boxes or bundles** from the CCRO archive. If you have been given a **Personnel ID** and permission to use the E-Log, this guide explains how to check out and return boxes. No admin login is required—only your **Personnel ID**.
+
+### 2.1 Opening the E-Log
+
+1. From the CCRO Document Locator screen, click **E-Log** in the header.
+2. The E-Log page opens with three sections: **Step 1**, **Step 2**, and **Step 3**.
+3. Scroll down to move through the steps.
+
+### 2.2 Step 1: Select or Search Your Personnel ID
+
+You must identify yourself before you can check out a box.
+
+**Personnel ID field**
+
+- One input field is used to type or select your ID.
+- **Type your ID** — Start typing. The dropdown filters to show matching personnel (ID and name). When your ID is recognized, a green message appears with your name.
+- **Select from list** — Click the dropdown arrow (▼) on the right side of the field to open the full list. Click your ID and name to select.
+- Placeholder text: *"Type your ID or select from list"*.
+
+**When your ID is recognized**
+
+- A green box appears: **"[Your Name] — You can check out a box below."**
+- You can then use Step 2 to check out a box.
+
+**When your ID is not recognized**
+
+- A warning appears: *"ID not recognized. Only registered personnel can check out boxes."*
+- Contact your administrator to be added as authorized personnel.
+
+**View check-out box**
+
+- Click **View check-out box** (top right of Step 1) to see all boxes/bundles currently checked out, who has them, and when they were checked out.
+
+### 2.3 Step 2: Choose a Box to Check Out
+
+After your ID is recognized, you can select a box to check out.
+
+**Box table**
+
+- A table lists all registered boxes with: **Type of Certificate**, **Box #**, **Registry Range**, **Month**, **Year**, **Status**, and **Action**.
+- **Status** shows either **Available** (green) or **Checked out** (amber) for each box.
+
+**Search**
+
+- Use the search field above the table to filter boxes by:
+  - Box number
+  - Registry range
+  - Certificate type (Birth, Marriage, Death)
+  - Month or year
+- As you type, the table updates to show only matching boxes.
+- A message shows: *"Showing X of Y boxes"* (and *"matching your search"* when a search is active).
+- Click **Search / Locate** to scroll to the first matching row in the table.
+
+**Check out a box**
+
+1. Find the box in the table (use search if needed).
+2. Click **Check Out This Box** for that row (only enabled when the box is **Available**).
+3. A confirmation dialog appears with your name, ID, and box details (Box #, Type, Registry Range, Month/Year).
+4. Click **Yes, Check Out This Box** to confirm.
+5. A success message appears and the box is marked as checked out.
+
+**Rules**
+
+- You may have **only one box or bundle** checked out at a time. Return it in Step 3 before checking out another.
+- Boxes/bundles already checked out by someone else show **Checked out** and the **Check Out This Box** button is disabled.
+- If you already have a box or bundle checked out, the checkout buttons are disabled until you return it.
+
+### 2.4 Step 3: Return a Box
+
+When you bring a box back to the archive, record the return here.
+
+**Return flow**
+
+1. In **Step 3**, enter your **Personnel ID** in the field labeled *"Enter your Personnel ID"*.
+2. The system loads your checked-out boxes. You may see *"Loading your checked-out boxes..."* briefly.
+3. If you have no boxes checked out: *"No boxes currently checked out under this ID."*
+4. If you have boxes checked out: A list appears with each box (type, box #, registry range, month/year) and an **I Returned This Box** button.
+5. Click **I Returned This Box** for the box you are returning.
+6. A confirmation dialog appears. **Re-enter your Personnel ID** in the confirmation field.
+7. Click **Confirm Return** only when the ID you typed matches the ID you used in Step 3.
+8. If the IDs match, the return is recorded and a success message appears.
+
+**Important**
+
+- You must re-enter your Personnel ID exactly (same spelling and case) to confirm the return.
+- If they do not match, you will see: *"Personnel ID does not match. Enter your ID again to confirm."*
+
+### 2.5 E-Log Summary
+
+| Step | Action |
+|------|--------|
+| Step 1 | Type or select your Personnel ID. Use **View check-out box** to see who has boxes/bundles. |
+| Step 2 | Search or scroll the box table. Click **Check Out This Box** and confirm in the dialog. |
+| Step 3 | Enter your ID, see your checked-out box/bundle, click **I Returned This Box**, re-enter your ID to confirm. |
+
+### 2.6 Leaving the E-Log
+
+- Use **Back to Locator** (or the main navigation) to return to the Document Locator.
+
+---
+
+## 3. Admin Manual
 
 Administrators manage boxes, locations, and monitor activity. You must log in to access the admin area.
 
-### 2.1 Logging In
+### 3.1 Logging In
 
 1. On the public locator page, click **Login** (top-right).
 2. Enter **Username** and **Password**.
@@ -134,7 +241,7 @@ Administrators manage boxes, locations, and monitor activity. You must log in to
 
 - Click **“← Back to Document Locator”** on the login page to return to the public locator without logging in.
 
-### 2.2 Admin Layout
+### 3.2 Admin Layout
 
 After login you see:
 
@@ -147,7 +254,7 @@ After login you see:
 - **Main area** — Content for the selected item.
 - **Logout** — At the bottom of the sidebar.
 
-### 2.3 Dashboard
+### 3.3 Dashboard
 
 Overview of recent activity and stats.
 
@@ -161,7 +268,7 @@ Overview of recent activity and stats.
 - Each entry shows type, timestamp, and details (e.g., search code).
 - **Clear History** — Removes all activity entries.
 
-### 2.4 Document Locator (Admin)
+### 3.4 Document Locator (Admin)
 
 Same search as the public locator, with these differences:
 
@@ -171,7 +278,7 @@ Same search as the public locator, with these differences:
 
 Search steps and result display are the same as in the public locator.
 
-### 2.5 Box Management
+### 3.5 Box Management
 
 Register and maintain boxes that the document locator uses.
 
@@ -221,7 +328,7 @@ Register and maintain boxes that the document locator uses.
 
 - Use **Previous** / **Next** and page numbers to move between pages when there are many boxes.
 
-### 2.6 Location Management
+### 3.6 Location Management
 
 Configure how bays, shelves, and rows map to the physical archive layout.
 
@@ -276,7 +383,7 @@ Configure how bays, shelves, and rows map to the physical archive layout.
 - **2D Table** — Edit bays, shelves, and rows in the table.
 - **3D Model** — View the rack in 3D; drag to rotate, scroll to zoom.
 
-### 2.7 Unsaved Changes (Location Management)
+### 3.7 Unsaved Changes (Location Management)
 
 - If you switch away from Location Management or log out with unsaved changes, a confirmation appears.
 - You can:
@@ -284,7 +391,7 @@ Configure how bays, shelves, and rows map to the physical archive layout.
   - **Discard changes**
   - **Save & continue**
 
-### 2.8 Logging Out
+### 3.8 Logging Out
 
 1. Click **Logout** at the bottom of the sidebar.
 2. You are returned to the public Document Locator page.
@@ -293,16 +400,17 @@ Configure how bays, shelves, and rows map to the physical archive layout.
 
 ## Quick Reference
 
-| Action                         | Public User          | Admin                                      |
-|--------------------------------|----------------------|--------------------------------------------|
-| Search for document location   | Yes                  | Yes (also logged in Activity Log)          |
-| View 2D/3D layout              | Yes                  | Yes                                        |
-| Fullscreen 3D                  | Yes                  | Yes                                        |
-| Login                          | Via Login button     | N/A                                        |
-| Manage boxes                   | No                   | Yes (add, edit, delete, view)              |
-| Manage location profiles       | No                   | Yes                                        |
-| View activity log              | No                   | Yes (Dashboard)                            |
-| Clear activity history         | No                   | Yes (Dashboard)                            |
+| Action                         | Public User          | E-Log (Personnel)        | Admin                                      |
+|--------------------------------|----------------------|--------------------------|--------------------------------------------|
+| Search for document location   | Yes                  | No                       | Yes (also logged in Activity Log)          |
+| View 2D/3D layout              | Yes                  | No                       | Yes                                        |
+| Fullscreen 3D                  | Yes                  | No                       | Yes                                        |
+| Check out / return boxes (E-Log)| No                   | Yes (with Personnel ID)  | Yes (if using E-Log)                        |
+| Login                          | Via Login button     | No                       | N/A                                        |
+| Manage boxes                   | No                   | No                       | Yes (add, edit, delete, view)              |
+| Manage location profiles       | No                   | No                       | Yes                                        |
+| View activity log              | No                   | No                       | Yes (Dashboard)                            |
+| Clear activity history         | No                   | No                       | Yes (Dashboard)                            |
 
 ---
 

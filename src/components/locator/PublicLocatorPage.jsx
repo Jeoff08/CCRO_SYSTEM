@@ -1,11 +1,16 @@
 import React, { useState, useEffect, useCallback } from "react";
 import DocumentLocator from "./DocumentLocator.jsx";
+import ELogPage from "../elog/ELogPage.jsx";
 import { Modal } from "../ui/index.js";
 import { boxesAPI, locationProfilesAPI } from "../../api/index.js";
 import { DEFAULT_SHELF_LETTERS_BY_BAY, DEFAULT_ROW_LABELS } from "../../constants/index.js";
 
-export default function PublicLocatorPage({ onLogin }) {
+const VIEWS = { LOCATOR: "locator", ELOG: "elog" };
+
+export default function PublicLocatorPage({ onLogin, addLog }) {
+  const [view, setView] = useState(VIEWS.LOCATOR);
   const [manualOpen, setManualOpen] = useState(false);
+  const [elogManualOpen, setElogManualOpen] = useState(false);
   const [boxes, setBoxes] = useState([]);
   const [shelfLettersByBay, setShelfLettersByBay] = useState(DEFAULT_SHELF_LETTERS_BY_BAY);
   const [rowLabels, setRowLabels] = useState(DEFAULT_ROW_LABELS);
@@ -35,6 +40,14 @@ export default function PublicLocatorPage({ onLogin }) {
     loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    if (view === VIEWS.ELOG) {
+      setManualOpen(false);
+    } else {
+      setElogManualOpen(false);
+    }
+  }, [view]);
+
   return (
     <div className="min-h-screen bg-white/50">
       {/* Header */}
@@ -56,16 +69,53 @@ export default function PublicLocatorPage({ onLogin }) {
             </div>
           </div>
           <div className="flex-1 px-4 py-3 flex items-center justify-end gap-3 min-w-0">
-            <button
-              type="button"
-              onClick={() => setManualOpen(true)}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/20 hover:bg-white/30 px-4 py-2 text-xs font-semibold text-white transition-all duration-200 hover:shadow-md border border-white/30"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
-              User Manual
-            </button>
+            {view === VIEWS.ELOG ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setView(VIEWS.LOCATOR)}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/20 hover:bg-white/30 px-4 py-2 text-xs font-semibold text-white transition-all duration-200 hover:shadow-md border border-white/30"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                  Back to Locator
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setElogManualOpen(true)}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/20 hover:bg-white/30 px-4 py-2 text-xs font-semibold text-white transition-all duration-200 hover:shadow-md border border-white/30"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                  User Manual
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setView(VIEWS.ELOG)}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/20 hover:bg-white/30 px-4 py-2 text-xs font-semibold text-white transition-all duration-200 hover:shadow-md border border-white/30"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                E-Log
+              </button>
+            )}
+            {view !== VIEWS.ELOG && (
+              <button
+                type="button"
+                onClick={() => setManualOpen(true)}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/20 hover:bg-white/30 px-4 py-2 text-xs font-semibold text-white transition-all duration-200 hover:shadow-md border border-white/30"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+                User Manual
+              </button>
+            )}
             <button
               type="button"
               onClick={onLogin}
@@ -83,7 +133,9 @@ export default function PublicLocatorPage({ onLogin }) {
       {/* Main content */}
       <main className="px-4 py-6 max-w-[min(80rem,calc(100vw-2rem))] mx-auto">
         <section className="w-full mx-auto bg-white rounded-3xl p-5 md:p-6 shadow-lg">
-          {loading ? (
+          {view === VIEWS.ELOG ? (
+            <ELogPage addLog={addLog} />
+          ) : loading ? (
             <div className="flex items-center justify-center py-16">
               <div className="flex flex-col items-center gap-3">
                 <div className="w-10 h-10 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
@@ -104,7 +156,7 @@ export default function PublicLocatorPage({ onLogin }) {
           ) : (
             <DocumentLocator
               boxes={boxes}
-              addLog={null}
+              addLog={addLog}
               shelfLettersByBay={shelfLettersByBay}
               rowLabels={rowLabels}
             />
@@ -200,6 +252,91 @@ export default function PublicLocatorPage({ onLogin }) {
                 <tr className="border-t border-gray-200"><td className="px-3 py-2">COD</td><td className="px-3 py-2">Death (COD)</td></tr>
               </tbody>
             </table>
+          </section>
+        </div>
+      </Modal>
+
+      {/* E-Log User Manual Modal (E-Log only) */}
+      <Modal
+        open={elogManualOpen}
+        onClose={() => setElogManualOpen(false)}
+        title="E-Log User Manual"
+        maxWidth="max-w-2xl"
+        borderColor="border-emerald-100"
+      >
+        <div className="space-y-5 text-sm text-gray-700 max-h-[70vh] overflow-y-auto pr-1">
+          <p className="leading-relaxed">
+            For personnel authorized to check out and return certificate boxes or bundles from the CCRO archive. If you have a <strong>Personnel ID</strong> and permission to use the E-Log, this guide explains how to check out and return boxes. No admin login is required—only your Personnel ID.
+          </p>
+
+          <section>
+            <h4 className="font-semibold text-gray-900 mb-2">1. Opening the E-Log</h4>
+            <ol className="list-decimal list-inside space-y-1.5 text-gray-600">
+              <li>From the CCRO Document Locator screen, click <strong>E-Log</strong> in the header.</li>
+              <li>The E-Log page opens with three sections: <strong>Step 1</strong>, <strong>Step 2</strong>, and <strong>Step 3</strong>.</li>
+              <li>Scroll down to move through the steps.</li>
+            </ol>
+          </section>
+
+          <section>
+            <h4 className="font-semibold text-gray-900 mb-2">2. Step 1: Select or Search Your Personnel ID</h4>
+            <p className="mb-2 text-gray-600">You must identify yourself before you can check out a box.</p>
+            <ul className="space-y-1.5 text-gray-600">
+              <li><strong>Type your ID</strong> — Start typing. The dropdown filters to show matching personnel. When your ID is recognized, a green message appears with your name.</li>
+              <li><strong>Select from list</strong> — Click the dropdown arrow (▼) to open the full list. Click your ID and name to select.</li>
+              <li>When recognized: <strong>&ldquo;[Your Name] — You can check out a box below.&rdquo;</strong></li>
+              <li>When not recognized: <em>&ldquo;ID not recognized. Only registered personnel can check out boxes.&rdquo;</em> Contact your administrator.</li>
+              <li><strong>View check-out box</strong> — Click to see all boxes currently checked out, who has them, and when.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h4 className="font-semibold text-gray-900 mb-2">3. Step 2: Choose a Box to Check Out</h4>
+            <p className="mb-2 text-gray-600">After your ID is recognized, you can select a box to check out.</p>
+            <ul className="space-y-1.5 text-gray-600">
+              <li><strong>Box table</strong> — Lists all registered boxes with Type, Box #, Registry Range, Month, Year, Status, and Action.</li>
+              <li><strong>Status</strong> — Shows <strong>Available</strong> (green) or <strong>Checked out</strong> (amber).</li>
+              <li><strong>Search</strong> — Filter by box number, registry range, certificate type, month, or year. Click <strong>Search / Locate</strong> to scroll to the first match.</li>
+              <li><strong>Check out</strong> — Find the box, click <strong>Check Out This Box</strong>, confirm in the dialog, then click <strong>Yes, Check Out This Box</strong>.</li>
+              <li><strong>Rules</strong> — You may have only one box checked out at a time. Return it in Step 3 before checking out another.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h4 className="font-semibold text-gray-900 mb-2">4. Step 3: Return a Box</h4>
+            <ol className="list-decimal list-inside space-y-1.5 text-gray-600">
+              <li>Enter your <strong>Personnel ID</strong> in the field.</li>
+              <li>The system loads your checked-out boxes.</li>
+              <li>If you have boxes checked out: A list appears with an <strong>I Returned This Box</strong> button for each.</li>
+              <li>Click <strong>I Returned This Box</strong> for the box you are returning.</li>
+              <li>Re-enter your Personnel ID in the confirmation field.</li>
+              <li>Click <strong>Confirm Return</strong> only when the ID matches.</li>
+            </ol>
+            <p className="mt-2 text-gray-600">
+              <strong>Important:</strong> You must re-enter your Personnel ID exactly (same spelling and case) to confirm. If they do not match, you will see: &ldquo;Personnel ID does not match. Enter your ID again to confirm.&rdquo;
+            </p>
+          </section>
+
+          <section>
+            <h4 className="font-semibold text-gray-900 mb-2">5. E-Log Summary</h4>
+            <table className="w-full text-left border border-gray-200 rounded-lg overflow-hidden text-gray-600">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="px-3 py-2 font-semibold">Step</th>
+                  <th className="px-3 py-2 font-semibold">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-t border-gray-200"><td className="px-3 py-2">Step 1</td><td className="px-3 py-2">Type or select your Personnel ID. Use View check-out box to see who has boxes.</td></tr>
+                <tr className="border-t border-gray-200"><td className="px-3 py-2">Step 2</td><td className="px-3 py-2">Search or scroll the box table. Click Check Out This Box and confirm.</td></tr>
+                <tr className="border-t border-gray-200"><td className="px-3 py-2">Step 3</td><td className="px-3 py-2">Enter your ID, see your checked-out box, click I Returned This Box, re-enter your ID to confirm.</td></tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section>
+            <h4 className="font-semibold text-gray-900 mb-2">6. Leaving the E-Log</h4>
+            <p className="text-gray-600">Use <strong>Back to Locator</strong> in the header to return to the Document Locator.</p>
           </section>
         </div>
       </Modal>

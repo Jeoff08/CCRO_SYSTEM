@@ -35,6 +35,40 @@ export function transformProfile(profile) {
 }
 
 /**
+ * Transform a personnel row from snake_case DB columns to camelCase JS.
+ */
+export function transformPersonnel(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    personnelId: row.personnel_id,
+    fullName: row.full_name,
+    createdAt: row.created_at,
+  };
+}
+
+/**
+ * Transform a checkout row from snake_case DB columns to camelCase JS.
+ */
+export function transformCheckout(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    personnelId: row.personnel_id,
+    personnelName: row.personnel_name,
+    boxId: row.box_id,
+    certType: row.cert_type,
+    registryRange: row.registry_range,
+    monthStr: row.month_str,
+    yearStr: row.year_str,
+    checkoutDate: row.checkout_date,
+    checkoutTime: row.checkout_time,
+    returnedAt: row.returned_at,
+    createdAt: row.created_at,
+  };
+}
+
+/**
  * Parse activity log details (may be JSON string or plain string).
  */
 export function parseLogDetails(details) {
@@ -44,4 +78,21 @@ export function parseLogDetails(details) {
   } catch {
     return details;
   }
+}
+
+/**
+ * Convert activity log details to a display-safe string (avoids React "Objects are not valid as a React child").
+ */
+export function detailsToDisplayString(details) {
+  if (details == null) return "";
+  if (typeof details === "string") return details;
+  if (typeof details === "object") {
+    if (details.message) return details.message;
+    if (details.boxId != null && details.personnelId != null) {
+      return `Box ${details.boxId} checked out by ${details.personnelId}`;
+    }
+    if (details.checkoutId != null) return `Checkout ${details.checkoutId} returned`;
+    return JSON.stringify(details);
+  }
+  return String(details);
 }

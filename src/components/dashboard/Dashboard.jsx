@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import DocumentLocator from "../locator/DocumentLocator.jsx";
 import BoxManagement from "../boxes/BoxManagement.jsx";
+import PersonnelManagement from "../personnel/PersonnelManagement.jsx";
 import LocationManagement from "../locations/LocationManagement.jsx";
 import Backup from "../backup/Backup.jsx";
 import AboutDeveloper from "../about/AboutDeveloper.jsx";
@@ -8,6 +9,7 @@ import DashboardHome from "./DashboardHome.jsx";
 import Sidebar, { TABS } from "../layout/Sidebar.jsx";
 import { Modal } from "../ui/index.js";
 import { useBoxes, useLocationProfiles } from "../../hooks/index.js";
+import { checkoutsAPI } from "../../api/index.js";
 
 export default function Dashboard({
   user,
@@ -19,6 +21,7 @@ export default function Dashboard({
   const [activeTab, setActiveTab] = useState(TABS.DASHBOARD);
   const [loading, setLoading] = useState(true);
   const [adminManualOpen, setAdminManualOpen] = useState(false);
+  const [activeCheckouts, setActiveCheckouts] = useState([]);
 
   const { boxes, loadBoxes, addBox, updateBox, deleteBox } = useBoxes();
   const {
@@ -35,8 +38,18 @@ export default function Dashboard({
   useEffect(() => {
     (async () => {
       setLoading(true);
-      await Promise.all([loadBoxes(), loadProfiles()]);
-      setLoading(false);
+      try {
+        const [, , checkoutsData] = await Promise.all([
+          loadBoxes(),
+          loadProfiles(),
+          checkoutsAPI.getAll(true),
+        ]);
+        setActiveCheckouts(checkoutsData || []);
+      } catch (error) {
+        console.error("Failed to load checkouts:", error);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [loadBoxes, loadProfiles]);
 
@@ -101,6 +114,16 @@ export default function Dashboard({
     setUnsavedModalOpen(false);
   }, []);
 
+  const checkedOutBoxIds = useMemo(
+    () => new Set(activeCheckouts.map((c) => c.boxId)),
+    [activeCheckouts]
+  );
+
+  const checkoutByBoxId = useMemo(
+    () => new Map(activeCheckouts.map((c) => [c.boxId, { personnelId: c.personnelId, personnelName: c.personnelName }])),
+    [activeCheckouts]
+  );
+
   return (
     <div className="h-screen overflow-hidden bg-white/50">
       {/* Top header bar */}
@@ -162,6 +185,8 @@ export default function Dashboard({
                 addLog={addLog}
                 shelfLettersByBay={activeLocationProfile?.shelfLettersByBay}
                 rowLabels={activeLocationProfile?.rowLabels}
+                checkedOutBoxIds={checkedOutBoxIds}
+                checkoutByBoxId={checkoutByBoxId}
               />
             )}
             {activeTab === TABS.LOCATOR && (
@@ -171,6 +196,9 @@ export default function Dashboard({
                 shelfLettersByBay={activeLocationProfile?.shelfLettersByBay}
                 rowLabels={activeLocationProfile?.rowLabels}
               />
+            )}
+            {activeTab === TABS.PERSONNEL && (
+              <PersonnelManagement />
             )}
             {activeTab === TABS.LOCATIONS && !loading && (
               <LocationManagement

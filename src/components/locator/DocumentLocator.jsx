@@ -97,7 +97,6 @@ export default function DocumentLocator({
     if (matchingBoxes.length === 0) {
       setResult(null);
       setError("No matching registered box found for the selected Type/Year/Month. Please add/register the box in Box Management first.");
-      if (addLog) addLog("search", { message: `Search (no match) for ${certificateType} - ${MONTHS[Number(month)]} ${year} #${registryNumber}` }, null);
       return;
     }
 
@@ -108,14 +107,12 @@ export default function DocumentLocator({
       const hasAnyRange = matchingBoxes.some((b) => b.registryRange);
       setResult(null);
       setError(hasAnyRange ? `Registry number ${registryNumber} does not fall within any registered box's range for ${certificateType} - ${MONTHS[Number(month)]} ${year}.` : "Matching boxes found but none have a registry range defined. Please update the box in Box Management.");
-      if (addLog) addLog("search", { message: `Search (no registry range match) for ${certificateType} - ${MONTHS[Number(month)]} ${year} #${registryNumber}` }, null);
       return;
     }
 
     const searchCode = buildSearchCode({ certificateType, year: Number(year), bay: rangeMatch.bay, shelf: rangeMatch.shelf, row: rangeMatch.row, boxNumber: rangeMatch.boxNumber, shelfLettersByBay, rowLabels });
     const registeredResult = { bay: rangeMatch.bay, shelf: rangeMatch.shelf, row: rangeMatch.row, box: rangeMatch.boxNumber, searchCode };
     setResult(registeredResult);
-    if (addLog) addLog("search", { message: `Search for ${certificateType} - ${MONTHS[Number(month)]} ${year} #${registryNumber}`, searchCode }, searchCode);
   };
 
   const handleReset = () => { setCertificateType(""); setYear(""); setMonth(""); setRegistryNumber(""); setTouched(false); setResult(null); setError(""); };

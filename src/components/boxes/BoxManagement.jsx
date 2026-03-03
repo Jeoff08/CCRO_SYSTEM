@@ -17,6 +17,8 @@ export default function BoxManagement({
   addLog,
   shelfLettersByBay,
   rowLabels,
+  checkedOutBoxIds,
+  checkoutByBoxId,
 }) {
   const shelfMap = shelfLettersByBay || DEFAULT_SHELF_LETTERS_BY_BAY;
   const rowLabelsMap = rowLabels || DEFAULT_ROW_LABELS;
@@ -49,12 +51,6 @@ export default function BoxManagement({
     if (editingBox) {
       try {
         await onUpdate(payload);
-        if (addLog) {
-          addLog(
-            "box-edit",
-            `Box ${payload.boxNumber} updated (Bay ${payload.bay}, Shelf ${getShelfLetter(shelfMap, payload.bay, payload.shelf)}, Row ${payload.row}).`
-          );
-        }
         setShowAddBoxModal(false);
         setSuccessMessage(`Box ${payload.boxNumber} updated successfully!`);
       } catch (error) {
@@ -74,12 +70,6 @@ export default function BoxManagement({
     };
     try {
       await onAdd(payload);
-      if (addLog) {
-        addLog(
-          "box-add",
-          `Box ${payload.boxNumber} created (Bay ${payload.bay}, Shelf ${getShelfLetter(shelfMap, payload.bay, payload.shelf)}, Row ${payload.row}).`
-        );
-      }
       setShowAddBoxModal(false);
       setSuccessMessage(`Box ${payload.boxNumber} added successfully!`);
     } catch (error) {
@@ -110,14 +100,13 @@ export default function BoxManagement({
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget || !onDelete) return;
+    if (checkedOutBoxIds?.has?.(deleteTarget.id)) {
+      console.warn("Attempted to delete a checked-out box. Operation blocked.");
+      setDeleteTarget(null);
+      return;
+    }
     try {
       await onDelete(deleteTarget.id);
-      if (addLog) {
-        addLog(
-          "box-delete",
-          `Box ${deleteTarget.boxNumber} deleted (Bay ${deleteTarget.bay}, Shelf ${getShelfLetter(shelfMap, deleteTarget.bay, deleteTarget.shelf)}, Row ${deleteTarget.row}).`
-        );
-      }
       setSuccessMessage(`Box ${deleteTarget.boxNumber} deleted successfully!`);
     } catch (error) {
       console.error("Failed to delete box:", error);
@@ -333,17 +322,29 @@ export default function BoxManagement({
                     <th className="px-3 py-2 font-semibold text-gray-600 whitespace-nowrap">Certificate Type</th>
                     <th className="px-3 py-2 font-semibold text-gray-600 whitespace-nowrap">Registry Range</th>
                     <th className="px-3 py-2 font-semibold text-gray-600 whitespace-nowrap">Remark</th>
+                    <th className="px-3 py-2 font-semibold text-gray-600 whitespace-nowrap">Checked out by</th>
                     <th className="px-3 py-2 font-semibold text-gray-600 whitespace-nowrap text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedBoxes.map((box) => (
+                  {paginatedBoxes.map((box) => {
+                    const isCheckedOut = checkedOutBoxIds?.has?.(box.id);
+                    return (
                       <tr
                         key={box.id}
-                        className="border-b border-emerald-100/50 bg-white hover:bg-gradient-to-r hover:from-emerald-50/80 hover:to-sky-50/60 hover:shadow-sm transition-all duration-200 group cursor-pointer"
+                        className={`border-b border-emerald-100/50 bg-white hover:bg-gradient-to-r hover:from-emerald-50/80 hover:to-sky-50/60 hover:shadow-sm transition-all duration-200 group ${isCheckedOut ? "opacity-60" : "cursor-pointer"}`}
                       >
                         <td className="px-4 py-3 text-gray-900 whitespace-nowrap font-semibold group-hover:text-emerald-700 transition-colors">
-                          {box.boxNumber != null && box.boxNumber !== "" ? box.boxNumber : "—"}
+                          <div className="flex items-center gap-2">
+                            <span className={isCheckedOut ? "line-through" : ""}>
+                              {box.boxNumber != null && box.boxNumber !== "" ? box.boxNumber : "—"}
+                            </span>
+                            {isCheckedOut && (
+                              <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-800 text-[10px] font-semibold px-2 py-0.5 border border-amber-200">
+                                Checked out
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-3 py-2 text-gray-900 whitespace-nowrap">
                           {box.monthIndex != null
@@ -364,6 +365,21 @@ export default function BoxManagement({
                         </td>
                         <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{box.registryRange || "—"}</td>
                         <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{box.remark || "—"}</td>
+                        <td className="px-3 py-2 text-gray-900 whitespace-nowrap">
+                          {isCheckedOut ? (() => {
+                            const c = checkoutByBoxId?.get?.(box.id);
+                            return c
+                              ? (
+                                  <span className="text-xs">
+                                    <span className="font-semibold text-amber-800">{c.personnelId}</span>
+                                    {c.personnelName ? (
+                                      <span className="text-gray-600"> ({c.personnelName})</span>
+                                    ) : null}
+                                  </span>
+                                )
+                              : "—";
+                          })() : "—"}
+                        </td>
                         <td className="px-3 py-2 whitespace-nowrap text-center">
                           <div className="inline-flex items-center gap-1.5">
                             <button
@@ -381,8 +397,9 @@ export default function BoxManagement({
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); startEdit(box); }}
-                              className="inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-gray-300 bg-white px-3 py-1.5 text-[11px] font-bold text-gray-700 hover:bg-emerald-50 hover:border-emerald-400 hover:shadow-md active:scale-95 transition-all duration-200 shadow-sm"
-                              title="Edit box"
+                              disabled={isCheckedOut}
+                              className="inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-gray-300 bg-white px-3 py-1.5 text-[11px] font-bold text-gray-700 hover:bg-emerald-50 hover:border-emerald-400 hover:shadow-md active:scale-95 transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:border-gray-300"
+                              title={isCheckedOut ? "This box is checked out and cannot be updated." : "Edit box"}
                             >
                               <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -393,8 +410,9 @@ export default function BoxManagement({
                               <button
                                 type="button"
                                 onClick={(e) => { e.stopPropagation(); setDeleteTarget(box); }}
-                                className="inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-gray-300 bg-white px-3 py-1.5 text-[11px] font-bold text-gray-700 hover:bg-emerald-50 hover:border-emerald-400 hover:shadow-md active:scale-95 transition-all duration-200 shadow-sm"
-                                title="Delete box"
+                                disabled={isCheckedOut}
+                                className="inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-gray-300 bg-white px-3 py-1.5 text-[11px] font-bold text-gray-700 hover:bg-emerald-50 hover:border-emerald-400 hover:shadow-md active:scale-95 transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:border-gray-300"
+                                title={isCheckedOut ? "This box is checked out and cannot be deleted." : "Delete box"}
                               >
                                 <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -405,7 +423,8 @@ export default function BoxManagement({
                           </div>
                         </td>
                       </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
