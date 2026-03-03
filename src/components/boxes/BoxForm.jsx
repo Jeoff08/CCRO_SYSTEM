@@ -541,7 +541,11 @@ export default function BoxForm({
 
       {/* Error Messages */}
       {(error || missingFields.length > 0) && (
-        <div className="space-y-3 pt-2" role="alert" aria-live="polite">
+        <div
+          className="space-y-3 pt-2"
+          role="alert"
+          aria-live="polite"
+        >
           {error && (
             <div className="flex items-start gap-3 bg-red-50 border-l-4 border-red-500 rounded-r-xl px-5 py-4 shadow-sm">
               <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -589,7 +593,7 @@ export default function BoxForm({
           )}
           <button
             type="submit"
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-sky-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-500/40 hover:from-emerald-700 hover:to-sky-700 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 min-w-[120px]"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-50 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 shadow-sm"
           >
             <svg
               className="w-5 h-5"

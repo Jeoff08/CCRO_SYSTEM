@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Modal } from "../ui/index.js";
-import { personnelAPI, checkoutsAPI } from "../../api/index.js";
+import { personnelAPI, checkoutsAPI, activityLogsAPI } from "../../api/index.js";
 
 export default function PersonnelManagement() {
   const [personnel, setPersonnel] = useState([]);
@@ -12,6 +12,9 @@ export default function PersonnelManagement() {
   const [personnelId, setPersonnelId] = useState("");
   const [fullName, setFullName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [returnConfirmOpen, setReturnConfirmOpen] = useState(false);
+  const [pendingReturn, setPendingReturn] = useState(null);
+  const [personnelWithPendingReturn, setPersonnelWithPendingReturn] = useState({});
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);
   const personnelIdInputRef = useRef(null);
@@ -20,12 +23,22 @@ export default function PersonnelManagement() {
     setLoading(true);
     setError("");
     try {
-      const [personnelData, checkoutData] = await Promise.all([
+      const [personnelData, checkoutData, logs] = await Promise.all([
         personnelAPI.getAll(),
         checkoutsAPI.getAll(true),
+        activityLogsAPI.getAll(200),
       ]);
       setPersonnel(personnelData || []);
       setActiveCheckouts(checkoutData || []);
+      const pendingByPersonnel = {};
+      (logs || []).forEach((log) => {
+        if (log.type !== "return-request") return;
+        const details = log.details;
+        if (details && typeof details === "object" && details.personnelId) {
+          pendingByPersonnel[details.personnelId] = true;
+        }
+      });
+      setPersonnelWithPendingReturn(pendingByPersonnel);
     } catch (err) {
       setError(err?.message || "Failed to load personnel.");
     } finally {
@@ -72,6 +85,46 @@ export default function PersonnelManagement() {
     setDeleteConfirmOpen(true);
   };
 
+  const handleOpenReturnConfirm = (p) => {
+    const checkoutsForPersonnel = activeCheckouts.filter(
+      (c) => c.personnelId === p.personnelId
+    );
+    if (checkoutsForPersonnel.length === 0) return;
+    setPendingReturn({
+      personnel: p,
+      checkouts: checkoutsForPersonnel,
+    });
+    setReturnConfirmOpen(true);
+  };
+
+  const handleAdminConfirmReturn = async (checkoutId) => {
+    if (!checkoutId) return;
+    setSaving(true);
+    setError("");
+    try {
+      await checkoutsAPI.markReturned(checkoutId);
+      await loadPersonnel();
+      if (pendingReturn) {
+        const remaining = pendingReturn.checkouts.filter(
+          (c) => c.id !== checkoutId
+        );
+        if (remaining.length === 0) {
+          setReturnConfirmOpen(false);
+          setPendingReturn(null);
+        } else {
+          setPendingReturn({
+            ...pendingReturn,
+            checkouts: remaining,
+          });
+        }
+      }
+    } catch (err) {
+      setError(err?.message || "Failed to confirm return.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleConfirmDelete = async () => {
     if (!pendingDelete) return;
     setSaving(true);
@@ -96,7 +149,7 @@ export default function PersonnelManagement() {
   const nameTrimmed = fullName?.trim() || "";
   const isIdFormatValid =
     pidTrimmed.length > 0 &&
-    /^(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s])[A-Z0-9^\s]+$/.test(pidTrimmed);
+    /^(?=.*[A-Z])(?=.*\d)[A-Z0-9]+$/.test(pidTrimmed);
   const isIdValid = pidTrimmed.length > 0 && isIdFormatValid;
   const isNameValid = nameTrimmed.length > 0;
   const isDuplicateId = isIdValid && personnel.some(
@@ -218,27 +271,54 @@ export default function PersonnelManagement() {
                       )}
                     </td>
                     <td className="px-3 py-2.5">
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteClick(p)}
-                        className="inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-gray-300 bg-white px-3 py-1.5 text-[11px] font-bold text-gray-700 hover:bg-emerald-50 hover:border-emerald-400 hover:shadow-md active:scale-95 transition-all duration-200 shadow-sm"
-                        title="Delete personnel"
-                      >
-                        <svg
-                          className="w-3.5 h-3.5 text-emerald-600"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
+                      <div className="flex flex-wrap items-center gap-2">
+                        {activeCheckouts.length > 0 &&
+                          personnelWithActiveCheckout.has(p.personnelId) &&
+                          personnelWithPendingReturn[p.personnelId] && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenReturnConfirm(p)}
+                            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-emerald-500 hover:shadow-md active:scale-95 transition-all duration-200 shadow-sm"
+                            title="Confirm returned boxes for this personnel"
+                          >
+                            <svg
+                              className="w-3.5 h-3.5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2.5}
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                            Confirm return
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteClick(p)}
+                          className="inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-gray-300 bg-white px-3 py-1.5 text-[11px] font-bold text-gray-700 hover:bg-emerald-50 hover:border-emerald-400 hover:shadow-md active:scale-95 transition-all duration-200 shadow-sm"
+                          title="Delete personnel"
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2.5}
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
-                        Delete
-                      </button>
+                          <svg
+                            className="w-3.5 h-3.5 text-emerald-600"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2.5}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1 1v3M4 7h16"
+                            />
+                          </svg>
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </motion.tr>
                 ))
@@ -281,11 +361,11 @@ export default function PersonnelManagement() {
                 Register a new team member to use the E-Log for checking out boxes.
               </p>
               <p className="mt-1 text-xs text-emerald-800/80">
-                Use a unique Personnel ID with <span className="font-mono">UPPERCASE letters</span>, at least one{" "}
-                <span className="font-mono">number</span> and one{" "}
-                <span className="font-mono">special character</span> (e.g.{" "}
-                <span className="font-mono">AB#123</span>) so staff can quickly
-                identify themselves at the kiosk.
+                Use a unique Personnel ID with <span className="font-mono">UPPERCASE letters</span> and{" "}
+                <span className="font-mono">numbers</span> (e.g.{" "}
+                <span className="font-mono">AB123</span>). The ID must include at least one{" "}
+                <span className="font-mono">letter</span> and one{" "}
+                <span className="font-mono">number</span>.
               </p>
             </div>
           </div>
@@ -308,7 +388,11 @@ export default function PersonnelManagement() {
                     ref={personnelIdInputRef}
                     type="text"
                     value={personnelId}
-                    onChange={(e) => setPersonnelId(e.target.value.toUpperCase())}
+                    onChange={(e) => {
+                      const upper = e.target.value.toUpperCase();
+                      const cleaned = upper.replace(/[^A-Z0-9]/g, "");
+                      setPersonnelId(cleaned);
+                    }}
                     placeholder="e.g. AB#123"
                     className={`w-full rounded-xl border-2 bg-slate-50/60 px-4 py-3 pr-10 text-sm text-slate-900 placeholder:text-slate-400 transition-all duration-200 focus:bg-white focus:ring-2 focus:ring-emerald-400/40 focus:outline-none ${
                       isDuplicateId
@@ -349,9 +433,9 @@ export default function PersonnelManagement() {
                 )}
                 {!isDuplicateId && pidTrimmed.length > 0 && !isIdFormatValid && (
                   <p className="mt-1.5 text-xs font-medium text-amber-700">
-                    ID must use <span className="font-semibold">UPPERCASE letters</span>, include at least one{" "}
-                    <span className="font-semibold">number</span> and one{" "}
-                    <span className="font-semibold">special character</span>.
+                    ID must use <span className="font-semibold">UPPERCASE letters</span> and{" "}
+                    <span className="font-semibold">numbers</span>, and include at least one of each.
+                    Only letters A–Z and digits 0–9 are allowed.
                   </p>
                 )}
               </div>
@@ -570,6 +654,63 @@ export default function PersonnelManagement() {
                 </svg>
                 {saving ? "Deleting…" : "Delete Personnel"}
               </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Admin confirm return modal */}
+      <Modal
+        open={returnConfirmOpen}
+        onClose={() => {
+          setReturnConfirmOpen(false);
+          setPendingReturn(null);
+        }}
+        title="Confirm Box Return"
+        maxWidth="max-w-xl"
+        borderColor="border-emerald-200"
+      >
+        {pendingReturn && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-800">
+              Confirm that the following box/bundle has been physically returned for{" "}
+              <span className="font-semibold">
+                {pendingReturn.personnel.fullName} ({pendingReturn.personnel.personnelId})
+              </span>
+              .
+            </p>
+            <div className="space-y-3 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
+              {pendingReturn.checkouts.map((c) => (
+                <div
+                  key={c.id}
+                  className="flex flex-col gap-1 rounded-xl border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-sm text-emerald-900"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold">
+                      {c.certType} • Box to confirm
+                    </span>
+                    <span className="text-xs text-emerald-800">
+                      {c.checkoutDate} • {c.checkoutTime}
+                    </span>
+                  </div>
+                  <p>
+                    <span className="font-semibold">Registry range:</span> {c.registryRange || "—"}
+                  </p>
+                  <p className="text-xs text-emerald-800/90">
+                    This box is currently marked as checked out in the system.
+                  </p>
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleAdminConfirmReturn(c.id)}
+                      disabled={saving}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {saving ? "Saving…" : "Mark as Returned"}
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

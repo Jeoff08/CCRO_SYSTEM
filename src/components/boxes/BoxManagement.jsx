@@ -221,24 +221,28 @@ export default function BoxManagement({
         maxWidth="max-w-4xl"
       >
         {modalStep === "form" && (
-          <BoxForm
-            key={editingBox?.id || (pendingBoxPayload ? "prefill" : "new")}
-            editingBox={editingBox}
-            prefillPayload={pendingBoxPayload && !editingBox ? pendingBoxPayload : undefined}
-            onSaved={handleSave}
-            onCancel={closeModal}
-            existingBoxes={boxes}
-            shelfLettersByBay={shelfMap}
-            rowLabels={rowLabelsMap}
-          />
+          <div key="form">
+            <BoxForm
+              key={editingBox?.id || (pendingBoxPayload ? "prefill" : "new")}
+              editingBox={editingBox}
+              prefillPayload={pendingBoxPayload && !editingBox ? pendingBoxPayload : undefined}
+              onSaved={handleSave}
+              onCancel={closeModal}
+              existingBoxes={boxes}
+              shelfLettersByBay={shelfMap}
+              rowLabels={rowLabelsMap}
+            />
+          </div>
         )}
         {modalStep === "confirm" && pendingBoxPayload && (
-          <ConfirmBoxStep
-            payload={pendingBoxPayload}
-            onBack={() => setModalStep("form")}
-            onConfirm={handleConfirmAdd}
-            shelfLettersByBay={shelfMap}
-          />
+          <div key="confirm">
+            <ConfirmBoxStep
+              payload={pendingBoxPayload}
+              onBack={() => setModalStep("form")}
+              onConfirm={handleConfirmAdd}
+              shelfLettersByBay={shelfMap}
+            />
+          </div>
         )}
       </Modal>
 
@@ -327,7 +331,7 @@ export default function BoxManagement({
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedBoxes.map((box) => {
+                  {paginatedBoxes.map((box, i) => {
                     const isCheckedOut = checkedOutBoxIds?.has?.(box.id);
                     return (
                       <tr

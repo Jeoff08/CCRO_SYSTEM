@@ -9,7 +9,7 @@ export default function CertificateBadge({ type, compact }) {
   if (compact) {
     return (
       <span
-        className={`inline-flex items-center rounded px-2 py-0.5 text-[11px] font-semibold text-white ${color}`}
+        className={`inline-flex items-center rounded px-2.5 py-1 text-sm font-semibold text-white ${color}`}
       >
         {type}
       </span>

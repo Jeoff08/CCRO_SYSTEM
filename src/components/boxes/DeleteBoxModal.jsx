@@ -11,7 +11,7 @@ export default function DeleteBoxModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
       onClick={onCancel}
       role="dialog"
       aria-modal="true"
@@ -19,7 +19,7 @@ export default function DeleteBoxModal({
       aria-describedby="delete-box-modal-description"
     >
       <div
-        className="bg-white rounded-3xl border-2 border-red-200 shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-in zoom-in-95 slide-in-from-bottom-4 duration-300"
+        className="bg-white rounded-3xl border-2 border-red-200 shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
