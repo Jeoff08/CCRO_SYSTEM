@@ -1,12 +1,19 @@
-import React from "react";
+import React, { useEffect } from "react";
 
 /**
  * Fixed-position toast notification.
  * @param {"success"|"warning"|"error"} variant
  * @param {string} message
  * @param {function} onClose
+ * @param {number} [autoCloseMs] - Auto-dismiss after this many ms; shows a progress bar when set.
  */
-export default function Toast({ variant = "success", message, onClose }) {
+export default function Toast({ variant = "success", message, onClose, autoCloseMs }) {
+  useEffect(() => {
+    if (!message || !autoCloseMs || typeof onClose !== "function") return;
+    const t = setTimeout(onClose, autoCloseMs);
+    return () => clearTimeout(t);
+  }, [message, autoCloseMs, onClose]);
+
   if (!message) return null;
 
   const styles = {
@@ -80,34 +87,54 @@ export default function Toast({ variant = "success", message, onClose }) {
   };
 
   const s = styles[variant] || styles.success;
+  const progressColor = variant === "error" ? "bg-red-500" : variant === "warning" ? "bg-amber-400" : "bg-emerald-500";
 
   return (
     <div className="fixed top-4 right-4 z-[100] animate-in slide-in-from-top-2 fade-in duration-300">
+      <style>{`@keyframes toast-progress { from { transform: scaleX(1); } to { transform: scaleX(0); } }`}</style>
       <div
-        className={`${s.bg} rounded-xl border-2 ${s.border} shadow-2xl ${s.shadow} px-5 py-4 min-w-[280px] max-w-md flex items-center gap-3`}
+        className={`${s.bg} rounded-xl border-2 ${s.border} shadow-2xl ${s.shadow} px-5 py-4 min-w-[280px] max-w-md flex items-center gap-3 overflow-hidden`}
       >
-        {s.icon}
-        <p className={`flex-1 text-sm font-semibold ${s.text}`}>{message}</p>
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex-shrink-0 p-1 rounded-lg hover:bg-black/10 transition-colors"
-          aria-label="Close"
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        </button>
+        <div className="flex-1 min-w-0 flex flex-col gap-0">
+          <div className="flex items-center gap-3">
+            {s.icon}
+            <p className={`flex-1 text-sm font-semibold ${s.text}`}>{message}</p>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-shrink-0 p-1 rounded-lg hover:bg-black/10 transition-colors"
+              aria-label="Close"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+          {autoCloseMs != null && autoCloseMs > 0 && (
+            <div
+              className="h-1 w-full rounded-full bg-black/10 overflow-hidden origin-right mt-2"
+              role="presentation"
+              aria-hidden
+            >
+              <div
+                className={`h-full w-full rounded-full ${progressColor}`}
+                style={{
+                  animation: `toast-progress ${autoCloseMs}ms linear forwards`,
+                }}
+              />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

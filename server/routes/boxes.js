@@ -28,6 +28,15 @@ const BOXES_TABLE_SCHEMA = `
   )
 `;
 
+const PERSONNEL_TABLE_SCHEMA = `
+  CREATE TABLE IF NOT EXISTS personnel (
+    id TEXT PRIMARY KEY,
+    personnel_id TEXT UNIQUE NOT NULL,
+    full_name TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )
+`;
+
 // Export box management only as a .db file (GET /api/boxes/export-db)
 // Handler is registered on the main app in index.js so it always wins over GET /:id
 export function handleExportDb(req, res) {
@@ -37,6 +46,8 @@ export function handleExportDb(req, res) {
     tempPath = join(tmpdir(), `ccro-box-management-${timestamp}.db`);
     const exportDb = new Database(tempPath);
     exportDb.exec(BOXES_TABLE_SCHEMA);
+    exportDb.exec(PERSONNEL_TABLE_SCHEMA);
+
     const rows = db.prepare("SELECT * FROM boxes ORDER BY box_number, bay, shelf, row").all();
     const insert = exportDb.prepare(
       `INSERT INTO boxes (
@@ -60,6 +71,21 @@ export function handleExportDb(req, res) {
         row.remark,
         row.created_at,
         row.updated_at
+      );
+    }
+
+    const personnelRows = db.prepare("SELECT * FROM personnel ORDER BY full_name ASC").all();
+    const insertPersonnel = exportDb.prepare(
+      `INSERT INTO personnel (
+        id, personnel_id, full_name, created_at
+      ) VALUES (?, ?, ?, ?)`
+    );
+    for (const p of personnelRows) {
+      insertPersonnel.run(
+        p.id,
+        p.personnel_id,
+        p.full_name,
+        p.created_at
       );
     }
     exportDb.close();
@@ -100,16 +126,29 @@ router.post("/import-db", (req, res) => {
       return res.status(400).json({ error: "Uploaded file has no 'boxes' table. Use a Box management export .db file." });
     }
     const rows = importDb.prepare("SELECT * FROM boxes").all();
+
+    const personnelTableInfo = importDb
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='personnel'")
+      .get();
+    const personnelRows = personnelTableInfo
+      ? importDb.prepare("SELECT * FROM personnel").all()
+      : [];
     importDb.close();
     unlinkSync(tempPath);
     tempPath = null;
 
     db.prepare("DELETE FROM boxes").run();
+    db.prepare("DELETE FROM personnel").run();
     const insert = db.prepare(
       `INSERT INTO boxes (
         id, certificate_type, year, year_to, month_index, month_index_to,
         box_number, bay, shelf, row, registry_range, remark, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    );
+    const insertPersonnel = db.prepare(
+      `INSERT INTO personnel (
+        id, personnel_id, full_name, created_at
+      ) VALUES (?, ?, ?, ?)`
     );
     const now = new Date().toISOString();
     for (const row of rows) {
@@ -130,7 +169,20 @@ router.post("/import-db", (req, res) => {
         row.updated_at ?? now
       );
     }
-    res.json({ imported: rows.length, message: `Imported ${rows.length} box(es) into Box management.` });
+    for (const p of personnelRows) {
+      insertPersonnel.run(
+        p.id ?? randomUUID(),
+        p.personnel_id,
+        p.full_name,
+        p.created_at ?? now
+      );
+    }
+    res.json({
+      imported: rows.length,
+      importedBoxes: rows.length,
+      importedPersonnel: personnelRows.length,
+      message: `Imported ${rows.length} box(es) and ${personnelRows.length} personnel record(s) into Box management.`
+    });
   } catch (error) {
     if (tempPath && existsSync(tempPath)) {
       try {

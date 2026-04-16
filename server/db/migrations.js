@@ -1,9 +1,21 @@
 import db from "./connection.js";
 
 /**
+ * Run schema and data migrations.
+ */
+function addPendingReturnAtIfMissing() {
+  const info = db.prepare("PRAGMA table_info(checkouts)").all();
+  const hasColumn = info.some((c) => c.name === "pending_return_at");
+  if (!hasColumn) {
+    db.prepare("ALTER TABLE checkouts ADD COLUMN pending_return_at TEXT").run();
+  }
+}
+
+/**
  * Run data migrations that fix/upgrade existing data.
  */
 export function runMigrations() {
+  addPendingReturnAtIfMissing();
   // Fix R-T → R-6 in existing location profiles
   const rows = db
     .prepare("SELECT id, row_labels FROM location_profiles")

@@ -101,7 +101,7 @@ function ShelfPlank({ position, width, depth }) {
 
 /* ── Interactive cardboard box with hover glow + tooltip ── */
 
-function InteractiveBox({ position, size, bayNum, shelfLabel, rowLabel }) {
+function InteractiveBox({ position, size, bayNum, shelfLabel, rowLabel, isCheckedOut = false }) {
   const [hovered, setHovered] = useState(false);
   const [clicked, setClicked] = useState(false);
   const [w, h, d] = [size[0] * 0.90, size[1] * 0.78, size[2] * 0.88];
@@ -135,11 +135,11 @@ function InteractiveBox({ position, size, bayNum, shelfLabel, rowLabel }) {
       >
         <boxGeometry args={[w, h, d]} />
         <meshStandardMaterial
-          color={clicked ? "#b8e6c8" : hovered ? "#d4a574" : "#c4a47a"}
-          roughness={hovered ? 0.7 : 0.88}
+          color={isCheckedOut ? "#9ca3af" : clicked ? "#b8e6c8" : hovered ? "#d4a574" : "#c4a47a"}
+          roughness={hovered && !isCheckedOut ? 0.7 : 0.88}
           metalness={0.0}
-          emissive={clicked ? "#10b981" : hovered ? "#8a6420" : "#000000"}
-          emissiveIntensity={clicked ? 0.35 : hovered ? 0.15 : 0}
+          emissive={isCheckedOut ? "#6b7280" : clicked ? "#10b981" : hovered ? "#8a6420" : "#000000"}
+          emissiveIntensity={isCheckedOut ? 0.08 : clicked ? 0.35 : hovered ? 0.15 : 0}
         />
       </mesh>
       {/* Lid seam */}
@@ -162,13 +162,13 @@ function InteractiveBox({ position, size, bayNum, shelfLabel, rowLabel }) {
         >
           <div
             style={{
-              background: "rgba(255,255,255,0.96)",
+              background: isCheckedOut ? "rgba(156,163,175,0.96)" : "rgba(255,255,255,0.96)",
               backdropFilter: "blur(10px)",
               borderRadius: 10,
               padding: "6px 12px",
               fontSize: 11,
               fontWeight: 600,
-              color: "#1f2937",
+              color: isCheckedOut ? "#374151" : "#1f2937",
               boxShadow: "0 4px 20px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04)",
               whiteSpace: "nowrap",
               textAlign: "center",
@@ -177,11 +177,12 @@ function InteractiveBox({ position, size, bayNum, shelfLabel, rowLabel }) {
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ color: "#065f46", fontWeight: 700 }}>B-{bayNum}</span>
+              <span style={{ color: isCheckedOut ? "#4b5563" : "#065f46", fontWeight: 700 }}>B-{bayNum}</span>
               <span style={{ color: "#d1d5db" }}>|</span>
-              <span style={{ color: "#92400e" }}>Shelf {shelfLabel}</span>
+              <span style={{ color: isCheckedOut ? "#6b7280" : "#92400e" }}>Shelf {shelfLabel}</span>
               <span style={{ color: "#d1d5db" }}>|</span>
-              <span style={{ color: "#374151" }}>{rowLabel}</span>
+              <span style={{ color: isCheckedOut ? "#6b7280" : "#374151" }}>{rowLabel}</span>
+              {isCheckedOut && <span style={{ color: "#ef4444", fontWeight: 700, marginLeft: 4 }}>Not yet returned</span>}
             </div>
           </div>
         </Html>
@@ -462,7 +463,7 @@ function SmoothCamera({ viewCmd, targetCellPos, totalW, totalH, controlsRef }) {
 
 /* ── BayUnit (now uses InteractiveBox for hover/click) ── */
 
-function BayUnit({ bayNum, shelves, rowLabels, rowKeys, xOff, highlight, showRowLabels, certTheme }) {
+function BayUnit({ bayNum, shelves, rowLabels, rowKeys, xOff, highlight, showRowLabels, certTheme, checkedOutLocationKeys }) {
   const numRows = rowKeys.length;
   const cols = colsForBay(shelves);
   const rackW = cols * CELL_W;
@@ -546,10 +547,11 @@ function BayUnit({ bayNum, shelves, rowLabels, rowKeys, xOff, highlight, showRow
             SIDE_GAP / 2 + SIDE_DEPTH / 2,
           ];
           const match = highlight && highlight.bay === bayNum && highlight.shelfIndex === si && highlight.row === rk;
+          const isCheckedOut = checkedOutLocationKeys?.has(`${bayNum},${si},${rk}`);
           return match ? (
             <HighlightedBox key={`fc-${colIdx}-${rk}`} position={pos} size={cellSize} label={highlight.box} info={highlight.info || null} theme={certTheme} />
           ) : (
-            <InteractiveBox key={`fc-${colIdx}-${rk}`} position={pos} size={cellSize} bayNum={bayNum} shelfLabel={shelfLbl} rowLabel={rowLabels[rk]} />
+            <InteractiveBox key={`fc-${colIdx}-${rk}`} position={pos} size={cellSize} bayNum={bayNum} shelfLabel={shelfLbl} rowLabel={rowLabels[rk]} isCheckedOut={!!isCheckedOut} />
           );
         });
       })}
@@ -564,10 +566,11 @@ function BayUnit({ bayNum, shelves, rowLabels, rowKeys, xOff, highlight, showRow
             -(SIDE_GAP / 2 + SIDE_DEPTH / 2),
           ];
           const match = highlight && highlight.bay === bayNum && highlight.shelfIndex === si && highlight.row === rk;
+          const isCheckedOut = checkedOutLocationKeys?.has(`${bayNum},${si},${rk}`);
           return match ? (
             <HighlightedBox key={`bc-${colIdx}-${rk}`} position={pos} size={cellSize} label={highlight.box} info={highlight.info || null} theme={certTheme} />
           ) : (
-            <InteractiveBox key={`bc-${colIdx}-${rk}`} position={pos} size={cellSize} bayNum={bayNum} shelfLabel={shelfLbl} rowLabel={rowLabels[rk]} />
+            <InteractiveBox key={`bc-${colIdx}-${rk}`} position={pos} size={cellSize} bayNum={bayNum} shelfLabel={shelfLbl} rowLabel={rowLabels[rk]} isCheckedOut={!!isCheckedOut} />
           );
         });
       })}
@@ -1756,7 +1759,7 @@ function OfficeRoom({ totalW, totalH, totalD }) {
 
 /* ── Scene (all racks + environment + interactivity) ── */
 
-function RackScene({ shelfLettersByBay, rowLabels, highlight, viewCmd, onPersonArrived }) {
+function RackScene({ shelfLettersByBay, rowLabels, highlight, viewCmd, onPersonArrived, checkedOutLocationKeys }) {
   const controlsRef = useRef();
 
   const bays = useMemo(
@@ -2223,6 +2226,7 @@ function RackScene({ shelfLettersByBay, rowLabels, highlight, viewCmd, onPersonA
           highlight={hlInfo}
           showRowLabels={idx === 0}
           certTheme={certTheme}
+          checkedOutLocationKeys={checkedOutLocationKeys}
         />
       ))}
 
@@ -2325,7 +2329,7 @@ const IconFullscreen = ({ active }) => (
 
 /* ── Main export ── */
 
-export default function LocationRack3D({ shelfLettersByBay, rowLabels, highlight, className = "", style = {} }) {
+export default function LocationRack3D({ shelfLettersByBay, rowLabels, highlight, className = "", style = {}, checkedOutLocationKeys }) {
   const containerRef = useRef(null);
   const [viewCmd, setViewCmd] = useState(null);
   const [activeView, setActiveView] = useState("default");
@@ -2441,6 +2445,7 @@ export default function LocationRack3D({ shelfLettersByBay, rowLabels, highlight
           highlight={highlight}
           viewCmd={viewCmd}
           onPersonArrived={() => setPersonArrived(true)}
+          checkedOutLocationKeys={checkedOutLocationKeys}
         />
       </Canvas>
 

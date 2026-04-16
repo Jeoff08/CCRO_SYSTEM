@@ -83,6 +83,23 @@ export default function ELogPage({ addLog }) {
     return box ? `Box #${box.boxNumber ?? boxId}` : boxId;
   };
 
+  const formatCheckoutDateTime = (dateStr, timeStr) => {
+    if (!dateStr || !timeStr) return `${dateStr || ""} ${timeStr || ""}`.trim();
+    const iso = `${dateStr}T${timeStr}`;
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) {
+      return `${dateStr} ${timeStr}`.trim();
+    }
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    }).format(d);
+  };
+
   const filteredBoxes = useCallback(() => {
     if (!boxSearch.trim()) return boxes;
     const q = boxSearch.toLowerCase().trim();
@@ -117,9 +134,7 @@ export default function ELogPage({ addLog }) {
     personnelInputRef.current?.focus();
   };
 
-  const canCheckout =
-    selectedPersonnel &&
-    !activeCheckouts.some((c) => c.personnelId === selectedPersonnel.personnelId);
+  const canCheckout = !!selectedPersonnel;
 
   const handleCheckoutClick = (box) => {
     if (!canCheckout) return;
@@ -187,31 +202,35 @@ export default function ELogPage({ addLog }) {
     setReturnModalOpen(true);
   };
 
-  const handleConfirmReturn = () => {
+  const handleConfirmReturn = async () => {
     if (!pendingReturnCheckout) return;
     if (returnConfirmId.trim() !== returnPersonnelId.trim()) {
       setError("Personnel ID does not match. Enter your ID again to confirm.");
       return;
     }
-    setReturnModalOpen(false);
-    setPendingReturnCheckout(null);
-    setReturnConfirmId("");
-    setSuccessMessage(
-      `Return recorded for ${pendingReturnCheckout.personnelName || returnPersonnelId}. Please proceed to the admin so they can finalize this return in the system.`
-    );
-    if (addLog) {
-      addLog(
-        "return-request",
-        {
-          message: `Return recorded for ${pendingReturnCheckout.personnelName || returnPersonnelId} (box ${getBoxDisplay(
-            pendingReturnCheckout.boxId
-          )}), awaiting admin confirmation.`,
-          personnelId: pendingReturnCheckout.personnelId || returnPersonnelId,
-          personnelName: pendingReturnCheckout.personnelName || null,
-          checkoutId: pendingReturnCheckout.id,
-          boxId: pendingReturnCheckout.boxId,
-        }
+    setReturning(true);
+    setError("");
+    setSuccessMessage(null);
+    try {
+      await checkoutsAPI.submitReturn(pendingReturnCheckout.id);
+      await loadData();
+      setReturnModalOpen(false);
+      setPendingReturnCheckout(null);
+      setReturnConfirmId("");
+      setReturnPersonnelId("");
+      setReturnPersonnelCheckouts([]);
+      setSuccessMessage(
+        `Return submitted. An admin will confirm in Personnel Management.`
       );
+      if (addLog)
+        addLog(
+          "return",
+          `Return submitted by ${pendingReturnCheckout.personnelName || returnPersonnelId} (pending admin confirm)`
+        );
+    } catch (err) {
+      setError(err?.message || "Return failed.");
+    } finally {
+      setReturning(false);
     }
   };
 
@@ -230,11 +249,13 @@ export default function ELogPage({ addLog }) {
         variant="success"
         message={successMessage}
         onClose={() => setSuccessMessage(null)}
+        autoCloseMs={5000}
       />
       <Toast
         variant="error"
         message={error}
         onClose={() => setError("")}
+        autoCloseMs={5000}
       />
 
       {loading ? (
@@ -302,20 +323,27 @@ export default function ELogPage({ addLog }) {
                           </div>
                         </td>
                         <td className="px-3 py-2.5 text-gray-700">
-                          {c.checkoutDate} {c.checkoutTime}
+                          {formatCheckoutDateTime(c.checkoutDate, c.checkoutTime)}
                         </td>
                         <td className="px-3 py-2.5">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setReturnPersonnelId(c.personnelId || "");
-                              setReturnPersonnelCheckouts([c]);
-                              handleReturnClick(c);
-                            }}
-                            className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700"
-                          >
-                            Return
-                          </button>
+                          {c.pendingReturnAt ? (
+                            <span className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700">
+                              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                              Pending confirmation
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setReturnPersonnelId(c.personnelId || "");
+                                setReturnPersonnelCheckouts([c]);
+                                handleReturnClick(c);
+                              }}
+                              className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700"
+                            >
+                              Return
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -349,7 +377,7 @@ export default function ELogPage({ addLog }) {
                 onChange={(e) => setPersonnelInput(e.target.value.toUpperCase())}
                 onFocus={() => setPersonnelDropdownOpen(true)}
                 placeholder="Type your ID or select from list"
-                className="w-full tedxt-xl rounded-xl border-2 border-slate-200 pl-4 pr-12 py-2.5 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
+                className="w-full text-xl rounded-xl border-2 border-slate-200 pl-4 pr-12 py-2.5 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
               />
               <button
                 type="button"
@@ -383,7 +411,7 @@ export default function ELogPage({ addLog }) {
             </div>
             {selectedPersonnel && (
               <div className="mt-3 rounded-xl border-2 border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-800">
-                <strong>{selectedPersonnel.fullName}</strong> — You can check out a box below.
+                <strong>{selectedPersonnel.fullName}</strong> — You can check out one or more boxes below.
               </div>
             )}
             {personnelInput.trim() && !selectedPersonnel && (
@@ -546,7 +574,10 @@ export default function ELogPage({ addLog }) {
                 <span className="font-semibold">Checked out by:</span> {pendingReturnCheckout.personnelName} ({pendingReturnCheckout.personnelId})
               </p>
               <p className="text-sm text-emerald-800/80">
-                {pendingReturnCheckout.checkoutDate} • {pendingReturnCheckout.checkoutTime}
+                {formatCheckoutDateTime(
+                  pendingReturnCheckout.checkoutDate,
+                  pendingReturnCheckout.checkoutTime
+                )}
               </p>
             </div>
             <div>
@@ -679,47 +710,63 @@ export default function ELogPage({ addLog }) {
                     Your checked-out boxes
                   </p>
                   <div className="space-y-3 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
-                    {returnPersonnelCheckouts.map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => handleReturnClick(c)}
-                        className="w-full text-left group rounded-2xl border border-emerald-100 bg-white/90 hover:bg-gradient-to-r hover:from-emerald-50 hover:to-emerald-100/60 px-5 py-4 text-lg shadow-sm hover:shadow-md transition-all duration-200 flex flex-col gap-2"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="inline-flex items-center gap-2 text-emerald-900 font-semibold">
-                            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 group-hover:scale-110 transition-transform" />
-                            <CertificateBadge type={c.certType} compact />
-                            <span className="font-semibold">{getBoxDisplay(c.boxId)}</span>
-                          </span>
-                          <span className="text-base text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-3 py-0.5">
-                            {c.checkoutDate} • {c.checkoutTime}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2 text-base text-emerald-800">
-                          <span className="inline-flex items-center gap-2 bg-emerald-50/80 rounded-full px-3 py-0.5 border border-emerald-100">
-                            <span className="text-sm font-semibold uppercase tracking-wide text-emerald-700">
-                              Registry
+                    {returnPersonnelCheckouts.map((c) => {
+                      const isPendingReturn = !!c.pendingReturnAt;
+                      return (
+                        <div
+                          key={c.id}
+                          className={`w-full text-left group rounded-2xl border px-5 py-4 text-lg shadow-sm flex flex-col gap-2 ${
+                            isPendingReturn
+                              ? "border-amber-200 bg-amber-50/80 cursor-default"
+                              : "border-emerald-100 bg-white/90 hover:bg-gradient-to-r hover:from-emerald-50 hover:to-emerald-100/60 hover:shadow-md transition-all duration-200"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <span className={`inline-flex items-center gap-2 font-semibold ${isPendingReturn ? "text-amber-900" : "text-emerald-900"}`}>
+                              <span className={`h-2.5 w-2.5 rounded-full ${isPendingReturn ? "bg-amber-500 animate-pulse" : "bg-emerald-500 group-hover:scale-110 transition-transform"}`} />
+                              <CertificateBadge type={c.certType} compact />
+                              <span className="font-semibold">{getBoxDisplay(c.boxId)}</span>
                             </span>
-                            <span>{c.registryRange || "—"}</span>
-                          </span>
-                          <span className="text-emerald-900/80">
-                            {c.monthStr} {c.yearStr}
-                          </span>
+                            <span className={`text-base rounded-full px-3 py-0.5 ${isPendingReturn ? "bg-amber-100 border border-amber-200 text-amber-800" : "text-emerald-700 bg-emerald-50 border border-emerald-100"}`}>
+                              {formatCheckoutDateTime(c.checkoutDate, c.checkoutTime)}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 text-base text-emerald-800">
+                            <span className="inline-flex items-center gap-2 bg-emerald-50/80 rounded-full px-3 py-0.5 border border-emerald-100">
+                              <span className="text-sm font-semibold uppercase tracking-wide text-emerald-700">
+                                Registry
+                              </span>
+                              <span>{c.registryRange || "—"}</span>
+                            </span>
+                            <span className="text-emerald-900/80">
+                              {c.monthStr} {c.yearStr}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2 pt-1 text-base text-emerald-900/80">
+                            <span>
+                              Checked out by <strong>{c.personnelName}</strong> ({c.personnelId})
+                            </span>
+                            {isPendingReturn ? (
+                              <span className="inline-flex items-center gap-1.5 text-amber-700 font-semibold">
+                                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                Pending confirmation
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleReturnClick(c)}
+                                className="inline-flex items-center gap-1.5 text-emerald-700 group-hover:text-emerald-800 font-semibold hover:underline"
+                              >
+                                Tap to return
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center justify-between gap-2 pt-1 text-base text-emerald-900/80">
-                          <span>
-                            Checked out by <strong>{c.personnelName}</strong> ({c.personnelId})
-                          </span>
-                          <span className="inline-flex items-center gap-1.5 text-emerald-700 group-hover:text-emerald-800">
-                            <span className="font-semibold">Tap to return</span>
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                            </svg>
-                          </span>
-                        </div>
-                      </button>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -750,7 +797,7 @@ export default function ELogPage({ addLog }) {
                 <span className="text-gray-600">— checked out by</span>
                 <strong>{c.personnelName} ({c.personnelId})</strong>
                 <span className="text-gray-500 text-xs">
-                  {c.checkoutDate} {c.checkoutTime}
+                  {formatCheckoutDateTime(c.checkoutDate, c.checkoutTime)}
                 </span>
               </div>
             ))

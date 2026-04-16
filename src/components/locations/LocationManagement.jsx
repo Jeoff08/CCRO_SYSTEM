@@ -12,6 +12,8 @@ export default function LocationManagement({
   onDeleteProfile,
   onDirtyChange,
   saveRef,
+  boxes = [],
+  checkedOutBoxIds,
 }) {
   const [selectedId, setSelectedId] = useState(activeProfileId || profiles?.[0]?.id || "");
   const selectedProfile = useMemo(
@@ -115,6 +117,47 @@ export default function LocationManagement({
         .filter((b) => !Number.isNaN(b))
         .sort((a, b) => a - b),
     [draftShelvesByBay]
+  );
+
+  /* ── Checked-out locations (E-log connection): bay,shelf,row for boxes not yet returned ── */
+  const checkedOutLocationKeys = useMemo(() => {
+    const set = new Set();
+    if (!boxes.length || !checkedOutBoxIds || !(checkedOutBoxIds instanceof Set)) return set;
+    for (const box of boxes) {
+      if (checkedOutBoxIds.has(box.id) && box.bay != null && box.shelf != null && box.row != null) {
+        set.add(`${box.bay},${box.shelf},${box.row}`);
+      }
+    }
+    return set;
+  }, [boxes, checkedOutBoxIds]);
+
+  // Individual box cells (bay+shelf+row) are visually marked as "not yet returned" in the 2D layout.
+  const isRowCellCheckedOut = useCallback(
+    (bay, shelfIdx, rowKey) => {
+      if (!checkedOutLocationKeys.size) return false;
+      return checkedOutLocationKeys.has(`${bay},${shelfIdx},${rowKey}`);
+    },
+    [checkedOutLocationKeys]
+  );
+
+  // Label for a checked-out box cell, e.g. "Box #12"
+  const getRowCellLabel = useCallback(
+    (bay, shelfIdx, rowKey) => {
+      if (!boxes.length || !checkedOutBoxIds || !checkedOutLocationKeys.size) return "—";
+      const key = `${bay},${shelfIdx},${rowKey}`;
+      if (!checkedOutLocationKeys.has(key)) return "—";
+      const match = boxes.find(
+        (b) =>
+          checkedOutBoxIds.has(b.id) &&
+          b.bay === bay &&
+          b.shelf === shelfIdx &&
+          b.row === rowKey
+      );
+      if (!match) return "—";
+      if (match.boxNumber != null) return `Box #${match.boxNumber}`;
+      return "Box";
+    },
+    [boxes, checkedOutBoxIds, checkedOutLocationKeys]
   );
 
   /* ── Handlers: save / create / delete profile ── */
@@ -783,6 +826,9 @@ export default function LocationManagement({
                   {layoutView === "2d"
                     ? "Click on any bay header, shelf label, or row label to edit directly. Changes are saved to draft."
                     : "Interactive 3D model of the storage rack layout. Drag to rotate, scroll to zoom."}
+                  {checkedOutLocationKeys.size > 0 && (
+                    <span className="ml-1 text-gray-600">Gray box cell = not yet returned (checked out in E-Log).</span>
+                  )}
                 </p>
               </div>
               <div className="flex gap-0.5 bg-gray-100 rounded-xl p-0.5 shrink-0 ml-4">
@@ -806,6 +852,7 @@ export default function LocationManagement({
               <LocationRack3D
                 shelfLettersByBay={draftShelvesByBay}
                 rowLabels={draftRowLabels}
+                checkedOutLocationKeys={checkedOutLocationKeys}
                 className="mt-2"
               />
             )}
@@ -821,10 +868,28 @@ export default function LocationManagement({
                           return (
                             <React.Fragment key={bay}>
                               <td className="w-6 p-0 border-none" aria-hidden />
-                              <th colSpan={Math.max(1, Math.ceil((draftShelvesByBay[bay] || []).length / 2))} className="px-4 py-2 font-bold text-emerald-800 border-2 border-emerald-200/60 cursor-pointer hover:bg-gradient-to-r hover:from-emerald-100 hover:to-sky-100 transition-all duration-200" onClick={() => { setEditingCell({ type: "bay", bay }); setEditingValue(`B-${bay}`); }} title="Click to edit bay number">
+                              <th
+                                colSpan={Math.max(1, Math.ceil((draftShelvesByBay[bay] || []).length / 2))}
+                                className="px-4 py-2 font-bold text-emerald-800 border-2 border-emerald-200/60 cursor-pointer hover:bg-gradient-to-r hover:from-emerald-100 hover:to-sky-100 transition-all duration-200"
+                                onClick={() => {
+                                  setEditingCell({ type: "bay", bay });
+                                  setEditingValue(`B-${bay}`);
+                                }}
+                                title="Click to edit bay number"
+                              >
                                 {isEditing ? (
-                                  <input type="text" value={editingValue} onChange={(e) => setEditingValue(e.target.value)} onBlur={() => commitBayEdit(bay)} onKeyDown={(e) => onKeyDown(e)} className="w-full text-center bg-white border-2 border-emerald-500 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 shadow-md" autoFocus />
-                                ) : `B-${bay}`}
+                                  <input
+                                    type="text"
+                                    value={editingValue}
+                                    onChange={(e) => setEditingValue(e.target.value)}
+                                    onBlur={() => commitBayEdit(bay)}
+                                    onKeyDown={(e) => onKeyDown(e)}
+                                    className="w-full text-center bg-white border-2 border-emerald-500 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 shadow-md"
+                                    autoFocus
+                                  />
+                                ) : (
+                                  `B-${bay}`
+                                )}
                               </th>
                             </React.Fragment>
                           );
@@ -848,12 +913,42 @@ export default function LocationManagement({
                                   <td className="w-6 p-0 border-none" aria-hidden />
                                   {padded.map((lbl, idx) => {
                                     const shelfIdx = startIdx + idx;
-                                    const isEditing = editingCell?.type === "shelf" && editingCell?.bay === bay && editingCell?.shelfIndex === shelfIdx;
+                                    const isEditing =
+                                      editingCell?.type === "shelf" &&
+                                      editingCell?.bay === bay &&
+                                      editingCell?.shelfIndex === shelfIdx;
                                     return (
-                                      <td key={`${bay}-${blockIdx}-${idx}`} className={`px-4 py-2 font-semibold text-gray-600 border-2 border-emerald-200/60 text-left min-w-[3rem] whitespace-nowrap w-14 transition-all duration-200 ${lbl ? "cursor-pointer hover:bg-gradient-to-r hover:from-emerald-50 hover:to-sky-50" : ""}`} onClick={() => { if (lbl) { setEditingCell({ type: "shelf", bay, shelfIndex: shelfIdx }); setEditingValue(lbl); } }} title={lbl ? "Click to edit shelf label" : ""}>
+                                      <td
+                                        key={`${bay}-${blockIdx}-${idx}`}
+                                        className={`px-4 py-2 font-semibold border-2 border-emerald-200/60 text-left min-w-[3rem] whitespace-nowrap w-14 transition-all duration-200 ${
+                                          lbl
+                                            ? "text-gray-600 cursor-pointer hover:bg-gradient-to-r hover:from-emerald-50 hover:to-sky-50"
+                                            : ""
+                                        }`}
+                                        onClick={() => {
+                                          if (lbl) {
+                                            setEditingCell({ type: "shelf", bay, shelfIndex: shelfIdx });
+                                            setEditingValue(lbl);
+                                          }
+                                        }}
+                                        title={lbl ? "Click to edit shelf label" : ""}
+                                      >
                                         {isEditing ? (
-                                          <input type="text" value={editingValue} onChange={(e) => { const val = e.target.value.toUpperCase().trim(); setEditingValue(val.startsWith("S-") ? val : val ? `S-${val}` : val); }} onBlur={() => commitShelfEdit(bay, shelfIdx)} onKeyDown={(e) => onKeyDown(e)} className="w-full bg-white border-2 border-emerald-500 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 shadow-md" autoFocus />
-                                        ) : (lbl ?? "")}
+                                          <input
+                                            type="text"
+                                            value={editingValue}
+                                            onChange={(e) => {
+                                              const val = e.target.value.toUpperCase().trim();
+                                              setEditingValue(val.startsWith("S-") ? val : val ? `S-${val}` : val);
+                                            }}
+                                            onBlur={() => commitShelfEdit(bay, shelfIdx)}
+                                            onKeyDown={(e) => onKeyDown(e)}
+                                            className="w-full bg-white border-2 border-emerald-500 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 shadow-md"
+                                            autoFocus
+                                          />
+                                        ) : (
+                                          lbl ?? ""
+                                        )}
                                       </td>
                                     );
                                   })}
@@ -862,30 +957,72 @@ export default function LocationManagement({
                             })}
                             <td className="w-6 p-0 border-none" aria-hidden />
                           </tr>
-                          {Object.keys(draftRowLabels).map(Number).filter((k) => !Number.isNaN(k)).sort((a, b) => b - a).map((row) => {
-                            const isEditing = editingCell?.type === "row" && editingCell?.rowKey === row;
-                            return (
-                              <tr key={`${blockIdx}-${row}`} className="border-b border-emerald-100">
-                                <td className="px-4 py-2 font-semibold text-gray-600 bg-emerald-50/50 border-2 border-emerald-200/60 w-14 min-w-[3.5rem] whitespace-nowrap cursor-pointer hover:bg-gradient-to-r hover:from-emerald-100 hover:to-sky-100 transition-all duration-200" onClick={() => { setEditingCell({ type: "row", rowKey: row }); setEditingValue(draftRowLabels[row]); }} title="Click to edit row label">
-                                  {isEditing ? (
-                                    <input type="text" value={editingValue} onChange={(e) => { const val = e.target.value.toUpperCase().trim(); setEditingValue(val.startsWith("R-") ? val : val ? `R-${val}` : val); }} onBlur={() => commitRowEdit(row)} onKeyDown={(e) => onKeyDown(e)} className="w-full bg-white border-2 border-emerald-500 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 shadow-md" autoFocus />
-                                  ) : draftRowLabels[row]}
-                                </td>
-                                {bayNumbers.map((bay) => {
-                                  const cols = Math.max(1, Math.ceil((draftShelvesByBay[bay] || []).length / 2));
-                                  return (
-                                    <React.Fragment key={bay}>
-                                      <td className="w-6 p-0 border-none" aria-hidden />
-                                      {Array.from({ length: cols }, (_, ci) => (
-                                        <td key={ci} className="px-3 py-2 border-2 min-w-[3rem] border-emerald-200 bg-white text-gray-400">—</td>
-                                      ))}
-                                    </React.Fragment>
-                                  );
-                                })}
-                                <td className="w-6 p-0 border-none" aria-hidden />
-                              </tr>
-                            );
-                          })}
+                          {Object.keys(draftRowLabels)
+                            .map(Number)
+                            .filter((k) => !Number.isNaN(k))
+                            .sort((a, b) => b - a)
+                            .map((row) => {
+                              const isEditing = editingCell?.type === "row" && editingCell?.rowKey === row;
+                              return (
+                                <tr key={`${blockIdx}-${row}`} className="border-b border-emerald-100">
+                                  <td
+                                    className="px-4 py-2 font-semibold text-gray-600 bg-emerald-50/50 border-2 border-emerald-200/60 w-14 min-w-[3.5rem] whitespace-nowrap cursor-pointer hover:bg-gradient-to-r hover:from-emerald-100 hover:to-sky-100 transition-all duration-200"
+                                    onClick={() => {
+                                      setEditingCell({ type: "row", rowKey: row });
+                                      setEditingValue(draftRowLabels[row]);
+                                    }}
+                                    title="Click to edit row label"
+                                  >
+                                    {isEditing ? (
+                                      <input
+                                        type="text"
+                                        value={editingValue}
+                                        onChange={(e) => {
+                                          const val = e.target.value.toUpperCase().trim();
+                                          setEditingValue(val.startsWith("R-") ? val : val ? `R-${val}` : val);
+                                        }}
+                                        onBlur={() => commitRowEdit(row)}
+                                        onKeyDown={(e) => onKeyDown(e)}
+                                        className="w-full bg-white border-2 border-emerald-500 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 shadow-md"
+                                        autoFocus
+                                      />
+                                    ) : (
+                                      draftRowLabels[row]
+                                    )}
+                                  </td>
+                                  {bayNumbers.map((bay) => {
+                                    const cols = Math.max(
+                                      1,
+                                      Math.ceil((draftShelvesByBay[bay] || []).length / 2)
+                                    );
+                                    return (
+                                      <React.Fragment key={bay}>
+                                        <td className="w-6 p-0 border-none" aria-hidden />
+                                        {Array.from({ length: cols }, (_, ci) => {
+                                          const shelfIdx = blockIdx * cols + ci;
+                                          const cellCheckedOut = isRowCellCheckedOut(bay, shelfIdx, row);
+                                          const label = getRowCellLabel(bay, shelfIdx, row);
+                                          return (
+                                            <td
+                                              key={ci}
+                                              className={`px-3 py-2 border-2 min-w-[3rem] text-xs ${
+                                                cellCheckedOut
+                                                  ? "border-gray-500 bg-gray-600 text-white font-semibold"
+                                                  : "border-emerald-200 bg-white text-gray-400"
+                                              }`}
+                                              title={cellCheckedOut ? `${label} · not yet returned (checked out)` : undefined}
+                                            >
+                                              {label}
+                                            </td>
+                                          );
+                                        })}
+                                      </React.Fragment>
+                                    );
+                                  })}
+                                  <td className="w-6 p-0 border-none" aria-hidden />
+                                </tr>
+                              );
+                            })}
                         </React.Fragment>
                       ))}
                     </tbody>

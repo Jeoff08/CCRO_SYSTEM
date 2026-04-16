@@ -64,6 +64,7 @@ export function transformCheckout(row) {
     checkoutDate: row.checkout_date,
     checkoutTime: row.checkout_time,
     returnedAt: row.returned_at,
+    pendingReturnAt: row.pending_return_at,
     createdAt: row.created_at,
   };
 }

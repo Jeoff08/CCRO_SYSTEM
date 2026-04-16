@@ -80,6 +80,7 @@ export function createSchema() {
       checkout_date TEXT NOT NULL,
       checkout_time TEXT NOT NULL,
       returned_at TEXT,
+      pending_return_at TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (box_id) REFERENCES boxes(id)
     )

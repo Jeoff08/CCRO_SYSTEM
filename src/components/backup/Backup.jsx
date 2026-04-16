@@ -38,7 +38,7 @@ export default function Backup({
       a.download = `ccro-box-management_${new Date().toISOString().slice(0, 19).replace(/[-:T]/g, "")}.db`;
       a.click();
       URL.revokeObjectURL(url);
-      setSuccessMessage("Box management exported as .db file.");
+      setSuccessMessage("Box management (boxes and personnel) exported as .db file.");
     } catch (err) {
       setErrorMessage(err?.message || "Export failed.");
     } finally {
@@ -74,7 +74,12 @@ export default function Backup({
       const base64 = await readFileAsBase64(file);
       const result = await boxesAPI.importDb(base64);
       if (onRefresh) await onRefresh();
-      setSuccessMessage(result?.message || `Imported ${result?.imported ?? 0} box(es) into Box management.`);
+      const importedBoxes = result?.importedBoxes ?? result?.imported ?? 0;
+      const importedPersonnel = result?.importedPersonnel ?? 0;
+      setSuccessMessage(
+        result?.message ||
+          `Imported ${importedBoxes} box(es) and ${importedPersonnel} personnel record(s) into Box management.`
+      );
     } catch (err) {
       setErrorMessage(err?.message || "Import failed.");
     } finally {
@@ -100,9 +105,11 @@ export default function Backup({
           {mode === "export" ? "Export" : mode === "import" ? "Import" : "Backup"}
         </h2>
         <p className="text-sm text-gray-600 leading-relaxed">
-          {mode === "export" && "Export Box management as a .db file."}
-          {mode === "import" && "Import Box management from a .db file."}
-          {mode !== "export" && mode !== "import" && "Export and import Box management as .db files."}
+          {mode === "export" && "Export Box management (boxes and personnel) as a .db file."}
+          {mode === "import" && "Import Box management (boxes and personnel) from a .db file."}
+          {mode !== "export" &&
+            mode !== "import" &&
+            "Export and import Box management (boxes and personnel) as .db files."}
         </p>
       </div>
 
@@ -153,12 +160,15 @@ export default function Backup({
       >
         <div className="space-y-4">
           <p className="text-sm text-gray-600">
-            Import Box management from <strong>{pendingImportDbFile?.name}</strong>? This will <strong>replace all current registered boxes</strong> with the data from the file.
+            Import Box management from <strong>{pendingImportDbFile?.name}</strong>? This will{" "}
+            <strong>replace all current registered boxes and personnel</strong> with the data from the file.
           </p>
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
             <p className="text-xs font-semibold text-amber-800 mb-1">Warning</p>
             <p className="text-xs text-amber-800/90">
-              Only the <strong>boxes</strong> table is imported. All existing registered boxes will be removed and replaced by the contents of this .db file. Use a file that was exported with &ldquo;Export .db (Box management)&rdquo;.
+              The <strong>boxes</strong> and <strong>personnel</strong> tables are imported. All existing registered
+              boxes and personnel will be removed and replaced by the contents of this .db file. Use a file that was
+              exported with &ldquo;Export .db (Box management)&rdquo;.
             </p>
           </div>
           <div className="flex gap-2 justify-end">
@@ -182,7 +192,11 @@ export default function Backup({
 
       <div className="rounded-2xl border border-slate-200/60 bg-slate-50/30 p-4 text-sm text-gray-600">
         <p className="font-semibold text-gray-700 mb-1">.db (Box management)</p>
-        <p>Exports or imports only the registered boxes table as a SQLite file. No users, location profiles, or activity logs are included. Use a file that was exported with &ldquo;Export .db (Box management)&rdquo; for import.</p>
+        <p>
+          Exports or imports the registered <strong>boxes</strong> and <strong>personnel</strong> tables as a SQLite
+          file. No users, location profiles, activity logs, or checkouts are included. Use a file that was exported
+          with &ldquo;Export .db (Box management)&rdquo; for import.
+        </p>
       </div>
     </div>
   );

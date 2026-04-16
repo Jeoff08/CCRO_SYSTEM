@@ -114,6 +114,30 @@ export default function Dashboard({
     setUnsavedModalOpen(false);
   }, []);
 
+  // Keep active check-outs in sync so Location/Box Management always show up-to-date gray markers
+  useEffect(() => {
+    let cancelled = false;
+
+    const refreshCheckouts = async () => {
+      try {
+        const data = await checkoutsAPI.getAll(true);
+        if (!cancelled) {
+          setActiveCheckouts(data || []);
+        }
+      } catch (error) {
+        console.error("Failed to refresh checkouts:", error);
+      }
+    };
+
+    // Poll periodically while the admin dashboard is open
+    const intervalId = setInterval(refreshCheckouts, 10000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
+  }, []);
+
   const checkedOutBoxIds = useMemo(
     () => new Set(activeCheckouts.map((c) => c.boxId)),
     [activeCheckouts]
@@ -209,6 +233,8 @@ export default function Dashboard({
                 onDeleteProfile={deleteProfile}
                 onDirtyChange={handleDirtyChange}
                 saveRef={locationSaveRef}
+                boxes={boxes}
+                checkedOutBoxIds={checkedOutBoxIds}
               />
             )}
             {activeTab === TABS.BACKUP && !loading && (
